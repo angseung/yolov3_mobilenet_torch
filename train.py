@@ -187,6 +187,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         )  # report
     else:
         model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
+        # model = Model(cfg, ch=3, nc=62, anchors=hyp.get("anchors")).to(device)  # create
 
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
@@ -640,7 +641,7 @@ def parse_opt(known=False):
     parser.add_argument(
         "--weights", type=str, default=ROOT / "yolov3.pt", help="initial weights path"
     )
-    parser.add_argument("--cfg", type=str, default=ROOT / "models/yolov3.yaml", help="model.yaml path")
+    parser.add_argument("--cfg", type=str, default=ROOT / "models/yolov3-mb2.yaml", help="model.yaml path")
     parser.add_argument(
         "--data", type=str, default=ROOT / "data/coco128.yaml", help="dataset.yaml path"
     )
@@ -971,3 +972,5 @@ def run(**kwargs):
 if __name__ == "__main__":
     opt = parse_opt()
     main(opt)
+    from models.common import MobileNetV2
+

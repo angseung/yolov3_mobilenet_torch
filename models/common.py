@@ -18,6 +18,7 @@ import torch
 import torch.nn as nn
 from PIL import Image
 from torch.cuda import amp
+from torchvision.models import MobileNetV2 as mbnet
 
 from utils.datasets import exif_transpose, letterbox
 from utils.general import (
@@ -103,6 +104,24 @@ class DWSConv(nn.Module):
         x = self.bn_pw(x)
         x = self.act_pw(x)
         return x
+
+
+class MobileNetV2(mbnet):
+    def __init__(self):
+        super().__init__()
+
+    def _forward_impl(self, x: torch.Tensor) -> torch.Tensor:
+        # This exists since TorchScript doesn't support inheritance, so the superclass method
+        # (this one) needs to have a name other than `forward` that can be accessed in a subclass
+        x = self.features(x)
+        # Cannot use "squeeze" as batch-size can be 1
+        # x = nn.functional.adaptive_avg_pool2d(x, (1, 1))
+        # x = torch.flatten(x, 1)
+        # x = self.classifier(x)
+        return x
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self._forward_impl(x)
 
 
 class TransformerLayer(nn.Module):
