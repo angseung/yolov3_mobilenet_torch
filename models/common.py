@@ -187,14 +187,14 @@ class Bottleneck(nn.Module):
 class DWSBottleneck(nn.Module):
     # Standard bottleneck
     def __init__(
-        self, c1, c2, shortcut=True, e=0.5
+        self, c1, c2, g=1, shortcut=True, e=0.5
     ):  # ch_in, ch_out, shortcut, groups, expansion
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
 
         # (in_channels, out_channels, kernel_size, strides)
         self.cv1 = Conv(c1, c_, 1, 1) #pconv
-        self.cv2 = DWSConv(c_, c2, 3, 1)
+        self.cv2 = DWSConv(c1=c_, c2=c2, k=3, s=1)
         self.add = shortcut and c1 == c2
 
     def forward(self, x):

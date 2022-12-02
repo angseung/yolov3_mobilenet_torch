@@ -644,7 +644,7 @@ def parse_opt(known=False):
     parser.add_argument(
         "--weights", type=str, default=ROOT / "yolov3.pt", help="initial weights path"
     )
-    parser.add_argument("--cfg", type=str, default=ROOT / "models/yolov3.yaml", help="model.yaml path")
+    parser.add_argument("--cfg", type=str, default=ROOT / "models/yolov3-nano.yaml", help="model.yaml path")
     parser.add_argument(
         "--data", type=str, default=ROOT / "data/coco128.yaml", help="dataset.yaml path"
     )
