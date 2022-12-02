@@ -357,8 +357,6 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                 c2 = make_divisible(c2 * gw, 8)
 
             args = [c1, c2, *args[1:]]
-            # if i == 1:
-            #     args = [1280, 1280, False]
             if m in [BottleneckCSP, C3, C3TR, C3Ghost]:
                 args.insert(2, n)  # number of repeats
                 n = 1
@@ -377,13 +375,9 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         else:
             c2 = ch[f]
 
-        try:
-            m_ = (
-                nn.Sequential(*(m(*args) for _ in range(n))) if n > 1 else m(*args)
-            )  # module
-        except TypeError:
-            m_ = m()
-
+        m_ = (
+            nn.Sequential(*(m(*args) for _ in range(n))) if n > 1 else m(*args)
+        )  # module
         t = str(m)[8:-2].replace("__main__.", "")  # module type
         np = sum(x.numel() for x in m_.parameters())  # number params
         m_.i, m_.f, m_.type, m_.np = (
@@ -401,16 +395,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         layers.append(m_)
         if i == 0:
             ch = []
-            # for a manual case...
-            if m in [MobileNetV2]:
-                ch = [32, 64, 64, 128, 128, 256, 256, 512, 512, 1024,
-                      # 1024, 1024, 512, 1024, 512, 1024, 256, 256,
-                      ]
         ch.append(c2)
-        dummy_input = torch.randn((1, 3, 320, 320))
-        dummy_model = nn.Sequential(*layers)
-        dummy_output = dummy_model(dummy_input)
-
     return nn.Sequential(*layers), sorted(save)
 
 
