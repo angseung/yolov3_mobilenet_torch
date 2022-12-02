@@ -76,18 +76,18 @@ class DWConv(Conv):
 
 class DWSConv(nn.Module):
     def __init__(
-        self, c1, c2, k=1, s=1, g=1, act=True
+        self, c1, c2, k=1, s=1, p="same", act=True
     ):
         super().__init__()
-        # there are no pad in neither dconv nor pconv...
-        self.dconv = nn.Conv2d(c1, c1, k, s, groups=math.gcd(c1, c2), bias=False)
-        self.bn_dw = nn.BatchNorm2d(c2)
+        assert s == 1  # DWConv can be defined when stride is equal to 1.
+        self.dconv = nn.Conv2d(c1, c1, k, s, padding=p, groups=c1, bias=False)
+        self.bn_dw = nn.BatchNorm2d(c1)
         self.act_dw = (
             nn.SiLU()
             if act is True
             else (act if isinstance(act, nn.Module) else nn.Identity())
         )
-        self.pconv = nn.Conv2d(c1, c2, k, s, groups=g, bias=False)
+        self.pconv = nn.Conv2d(in_channels=c1, out_channels=c2, padding=p, kernel_size=1, stride=1, bias=False)
         self.bn_pw = nn.BatchNorm2d(c2)
         self.act_pw = (
             nn.SiLU()
@@ -174,8 +174,27 @@ class Bottleneck(nn.Module):
     ):  # ch_in, ch_out, shortcut, groups, expansion
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
-        self.cv1 = Conv(c1, c_, 1, 1)
+
+        # (in_channels, out_channels, kernel_size, strides)
+        self.cv1 = Conv(c1, c_, 1, 1) #pconv
         self.cv2 = Conv(c_, c2, 3, 1, g=g)
+        self.add = shortcut and c1 == c2
+
+    def forward(self, x):
+        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
+
+class DWSBottleneck(nn.Module):
+    # Standard bottleneck
+    def __init__(
+        self, c1, c2, shortcut=True, e=0.5
+    ):  # ch_in, ch_out, shortcut, groups, expansion
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+
+        # (in_channels, out_channels, kernel_size, strides)
+        self.cv1 = Conv(c1, c_, 1, 1) #pconv
+        self.cv2 = DWSConv(c_, c2, 3, 1)
         self.add = shortcut and c1 == c2
 
     def forward(self, x):
@@ -850,3 +869,11 @@ class Classify(nn.Module):
             [self.aap(y) for y in (x if isinstance(x, list) else [x])], 1
         )  # cat if list
         return self.flat(self.conv(z))  # flatten to x(b,c2)
+
+if __name__ == "__main__":
+    import torch
+    a = torch.randn((1, 3, 320, 320))
+    conv = DWSConv(3, 32, k=3, s=1, act=True)
+    model = torch.nn.Sequential(*[conv])
+    b = model(a)
+    print(b.shape)

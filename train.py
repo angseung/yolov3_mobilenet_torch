@@ -24,6 +24,7 @@ from torch.cuda import amp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import SGD, Adam, lr_scheduler
 from tqdm import tqdm
+from torchinfo import summary
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
@@ -186,8 +187,10 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
             f"Transferred {len(csd)}/{len(model.state_dict())} items from {weights}"
         )  # report
     else:
-        # model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
-        model = Model(cfg, ch=3, nc=62, anchors=hyp.get("anchors")).to(device)  # create
+        model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
+        # model = Model(cfg, ch=3, nc=62, anchors=hyp.get("anchors")).to(device)  # create
+
+    print(summary(model, (1, 3, 320, 320)))
 
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
