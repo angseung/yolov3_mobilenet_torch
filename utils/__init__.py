@@ -6,7 +6,7 @@ utils/initialization
 
 def notebook_init():
     # For  notebooks
-    print('Checking setup...')
+    print("Checking setup...")
     from IPython import display  # to display images and clear console output
 
     from utils.general import emojis
@@ -14,5 +14,5 @@ def notebook_init():
 
     display.clear_output()
     select_device(newline=False)
-    print(emojis('Setup complete ✅'))
+    print(emojis("Setup complete ✅"))
     return display
