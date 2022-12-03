@@ -24,7 +24,13 @@ from torch.cuda import amp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import SGD, Adam, lr_scheduler
 from tqdm import tqdm
-from torchinfo import summary
+
+try:
+    from torchinfo import summary
+    TORCH_INFO_OPT = True
+except ImportError or ModuleNotFoundError:
+    TORCH_INFO_OPT = False
+
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
@@ -190,7 +196,8 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
         # model = Model(cfg, ch=3, nc=62, anchors=hyp.get("anchors")).to(device)  # create
 
-    print(summary(model, (1, 3, 320, 320)))
+    if TORCH_INFO_OPT:
+        print(summary(model, (1, 3, 320, 320)))
 
     # for check elapsed time test on raspberry pi
     a = torch.randn((1, 3, 320, 320))
