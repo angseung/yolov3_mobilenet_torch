@@ -27,6 +27,7 @@ from tqdm import tqdm
 
 try:
     from torchinfo import summary
+
     TORCH_INFO_OPT = True
 except ImportError or ModuleNotFoundError:
     TORCH_INFO_OPT = False
@@ -200,16 +201,18 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         print(summary(model, (1, 3, 320, 320)))
 
     # for check elapsed time test on raspberry pi
-    a = torch.randn((1, 3, 320, 320))
-    import time
+    RASPI_CALC_OPT = False
+    if RASPI_CALC_OPT:
+        a = torch.randn((1, 3, opt.imgsz, opt.imgsz))
+        import time
 
-    total_time = 0
-    for _ in range(50):
-        start_time = time.time()
-        dummy_output = model(a)
-        end_time = time.time()
-        total_time += end_time - start_time
-    print(total_time / 50)
+        total_time = 0
+        for _ in range(50):
+            start_time = time.time()
+            dummy_output = model(a)
+            end_time = time.time()
+            total_time += end_time - start_time
+        print(total_time / 50)
 
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
