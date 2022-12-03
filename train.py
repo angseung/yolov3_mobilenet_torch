@@ -195,6 +195,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     # for check elapsed time test on raspberry pi
     a = torch.randn((1, 3, 320, 320))
     import time
+
     total_time = 0
     for _ in range(50):
         start_time = time.time()
@@ -655,7 +656,12 @@ def parse_opt(known=False):
     parser.add_argument(
         "--weights", type=str, default=ROOT / "yolov3.pt", help="initial weights path"
     )
-    parser.add_argument("--cfg", type=str, default=ROOT / "models/yolov3-nano.yaml", help="model.yaml path")
+    parser.add_argument(
+        "--cfg",
+        type=str,
+        default=ROOT / "models/yolov3-nano.yaml",
+        help="model.yaml path",
+    )
     parser.add_argument(
         "--data", type=str, default=ROOT / "data/coco128.yaml", help="dataset.yaml path"
     )
@@ -986,5 +992,3 @@ def run(**kwargs):
 if __name__ == "__main__":
     opt = parse_opt()
     main(opt)
-    from models.common import MobileNetV2
-

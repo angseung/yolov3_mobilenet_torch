@@ -75,11 +75,10 @@ class DWConv(Conv):
 
 
 class DWSConv(nn.Module):
-    def __init__(
-        self, c1, c2, k=1, s=1, p="same", act=True
-    ):
+    def __init__(self, c1, c2, k=1, s=1, p="same", act=True):
         super().__init__()
-        assert s == 1  # DWConv can be defined when stride is equal to 1.
+        # DWConv can be defined when stride is equal to 1.
+        assert s == 1
         self.dconv = nn.Conv2d(c1, c1, k, s, padding=p, groups=c1, bias=False)
         self.bn_dw = nn.BatchNorm2d(c1)
         self.act_dw = (
@@ -87,7 +86,14 @@ class DWSConv(nn.Module):
             if act is True
             else (act if isinstance(act, nn.Module) else nn.Identity())
         )
-        self.pconv = nn.Conv2d(in_channels=c1, out_channels=c2, padding=p, kernel_size=1, stride=1, bias=False)
+        self.pconv = nn.Conv2d(
+            in_channels=c1,
+            out_channels=c2,
+            padding=p,
+            kernel_size=1,
+            stride=1,
+            bias=False,
+        )
         self.bn_pw = nn.BatchNorm2d(c2)
         self.act_pw = (
             nn.SiLU()
@@ -114,10 +120,6 @@ class MobileNetV2(mbnet):
         # This exists since TorchScript doesn't support inheritance, so the superclass method
         # (this one) needs to have a name other than `forward` that can be accessed in a subclass
         x = self.features(x)
-        # Cannot use "squeeze" as batch-size can be 1
-        # x = nn.functional.adaptive_avg_pool2d(x, (1, 1))
-        # x = torch.flatten(x, 1)
-        # x = self.classifier(x)
         return x
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -176,7 +178,7 @@ class Bottleneck(nn.Module):
         c_ = int(c2 * e)  # hidden channels
 
         # (in_channels, out_channels, kernel_size, strides)
-        self.cv1 = Conv(c1, c_, 1, 1) #pconv
+        self.cv1 = Conv(c1, c_, 1, 1)  # pconv
         self.cv2 = Conv(c_, c2, 3, 1, g=g)
         self.add = shortcut and c1 == c2
 
@@ -193,7 +195,7 @@ class DWSBottleneck(nn.Module):
         c_ = int(c2 * e)  # hidden channels
 
         # (in_channels, out_channels, kernel_size, strides)
-        self.cv1 = Conv(c1, c_, 1, 1) #pconv
+        self.cv1 = Conv(c1, c_, 1, 1)  # pconv
         self.cv2 = DWSConv(c1=c_, c2=c2, k=3, s=1)
         self.add = shortcut and c1 == c2
 
@@ -869,11 +871,3 @@ class Classify(nn.Module):
             [self.aap(y) for y in (x if isinstance(x, list) else [x])], 1
         )  # cat if list
         return self.flat(self.conv(z))  # flatten to x(b,c2)
-
-if __name__ == "__main__":
-    import torch
-    a = torch.randn((1, 3, 320, 320))
-    conv = DWSConv(3, 32, k=3, s=1, act=True)
-    model = torch.nn.Sequential(*[conv])
-    b = model(a)
-    print(b.shape)
