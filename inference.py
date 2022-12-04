@@ -16,6 +16,7 @@ elif "Linux" in curr_os:
 cfg = "./models/yolov3-nano.yaml"
 img_size = 320
 n_classes = 62
-model = Model(cfg=cfg, nc=n_classes, anchors=None).to(device)
+model = Model(cfg=cfg, nc=n_classes, anchors=5).to(device)
+model.eval()
 dummy_input = torch.randn((1, 3, img_size, img_size)).to(device)
-dummy_output = model(dummy_input)
+[dummy_bboxes, dummy_output] = model(dummy_input)

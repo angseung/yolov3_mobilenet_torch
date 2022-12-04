@@ -194,6 +194,9 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
             f"Transferred {len(csd)}/{len(model.state_dict())} items from {weights}"
         )  # report
     else:
+        """
+        hyp["anchors"] value was parsed from anchors value in data/hyps/hyp.scratch.yaml
+        """
         model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
         # model = Model(cfg, ch=3, nc=62, anchors=hyp.get("anchors")).to(device)  # create
 
@@ -207,12 +210,14 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         import time
 
         total_time = 0
+        model.eval()
         for _ in range(50):
             start_time = time.time()
-            dummy_output = model(a)
+            [dummy_bboxes, dummy_output] = model(a)
             end_time = time.time()
             total_time += end_time - start_time
         print(total_time / 50)
+        model.train()
 
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
@@ -669,7 +674,7 @@ def parse_opt(known=False):
     parser.add_argument(
         "--cfg",
         type=str,
-        default=ROOT / "models/yolov3-nano.yaml",
+        default=ROOT / "models/yolov3.yaml",
         help="model.yaml path",
     )
     parser.add_argument(
