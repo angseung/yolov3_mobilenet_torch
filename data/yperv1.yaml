@@ -23,6 +23,8 @@ val: images/val
 test: images/test
 
 # Classes
+# WARNING
+# Label index and num_classes WILL BE MODIFIED...
 nc: 62  # number of classes
 names: ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
         'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
