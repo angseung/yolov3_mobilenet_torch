@@ -463,10 +463,13 @@ class DetectMultiBackend(nn.Module):
                 with open(hyp, errors="ignore") as f:
                     hyp = yaml.safe_load(f)  # load hyps dict
 
-            # load model.yaml
-            from models.yolo import Model
+            # load model configs
             cfg = f"models/{weights}"
-            model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
+
+            # build model
+            from models.yolo import Model
+
+            model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)
 
         elif jit:  # TorchScript
             LOGGER.info(f"Loading {w} for TorchScript inference...")
