@@ -3,6 +3,7 @@
 Common modules
 """
 
+import os
 import json
 import math
 import platform
@@ -13,6 +14,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pandas as pd
+import yaml
 import requests
 import torch
 import torch.nn as nn
@@ -34,7 +36,14 @@ from utils.general import (
     xyxy2xywh,
 )
 from utils.plots import Annotator, colors, save_one_box
-from utils.torch_utils import time_sync
+from utils.torch_utils import time_sync, torch_distributed_zero_first
+from utils.general import check_dataset
+
+LOCAL_RANK = int(
+    os.getenv("LOCAL_RANK", -1)
+)  # https://pytorch.org/docs/stable/elastic/run.html
+RANK = int(os.getenv("RANK", -1))
+WORLD_SIZE = int(os.getenv("WORLD_SIZE", 1))
 
 
 def autopad(k, p=None):  # kernel, padding
@@ -413,7 +422,7 @@ class DetectMultiBackend(nn.Module):
     #  MultiBackend class for python inference on various backends
     def __init__(self, weights="yolov3.pt", device=None, dnn=True):
         # Usage:
-        #   PyTorch:      weights = *.pt
+        #   PyTorch:      weights = *.pt or *.yaml
         #   TorchScript:            *.torchscript.pt
         #   CoreML:                 *.mlmodel
         #   TensorFlow:             *_saved_model
@@ -430,15 +439,36 @@ class DetectMultiBackend(nn.Module):
             ".pb",
             "",
             ".mlmodel",
+            ".yaml",
         ]
         check_suffix(w, suffixes)  # check weights have acceptable suffix
-        pt, onnx, tflite, pb, saved_model, coreml = (
+        pt, onnx, tflite, pb, saved_model, coreml, yaml_file = (
             suffix == x for x in suffixes
         )  # backend booleans
         jit = pt and "torchscript" in w.lower()
         stride, names = 64, [f"class{i}" for i in range(1000)]  # assign defaults
+        # pt = "models/yolov3-nano.yaml"
 
-        if jit:  # TorchScript
+        if yaml_file:  # build model from yaml
+            # load data.yaml
+            with torch_distributed_zero_first(LOCAL_RANK):
+                data_dict = check_dataset("data/coco128.yaml")  # check if None
+            train_path, val_path = data_dict["train"], data_dict["val"]
+            nc = int(data_dict["nc"])  # number of classes
+            names = data_dict["names"]  # class names
+
+            # load hyp.yaml
+            hyp = "data/hyps/hyp.scratch.yaml"
+            if isinstance(hyp, str):
+                with open(hyp, errors="ignore") as f:
+                    hyp = yaml.safe_load(f)  # load hyps dict
+
+            # load model.yaml
+            from models.yolo import Model
+            cfg = f"models/{weights}"
+            model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
+
+        elif jit:  # TorchScript
             LOGGER.info(f"Loading {w} for TorchScript inference...")
             extra_files = {"config.txt": ""}  # model metadata
             model = torch.jit.load(w, _extra_files=extra_files)
@@ -529,7 +559,7 @@ class DetectMultiBackend(nn.Module):
     def forward(self, im, augment=False, visualize=False, val=False):
         #  MultiBackend inference
         b, ch, h, w = im.shape  # batch, channel, height, width
-        if self.pt:  # PyTorch
+        if self.pt or self.yaml_file:  # PyTorch
             y = (
                 self.model(im)
                 if self.jit

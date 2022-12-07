@@ -649,7 +649,7 @@ def parse_opt(known=False):
     parser.add_argument(
         "--cfg",
         type=str,
-        default=ROOT / "models/yolov3-nano.yaml",
+        default=ROOT / "models/yolov3.yaml",
         help="model.yaml path",
     )
     parser.add_argument(

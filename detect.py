@@ -122,10 +122,11 @@ def run(
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     # Run inference
+    # warm-up GPU with temporary tensor if device is not CPU
     if pt and device.type != "cpu":
         model(
             torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters()))
-        )  # warmup
+        )
     dt, seen = [0.0, 0.0, 0.0], 0
     for path, im, im0s, vid_cap, s in dataset:
         t1 = time_sync()
@@ -264,9 +265,10 @@ def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--weights",
-        nargs="+",
+        # nargs="+",
         type=str,
-        default=ROOT / "yolov3.pt",
+        # default=ROOT / "yolov3.pt",
+        default=ROOT / "yolov3-nano.yaml",
         help="model path(s)",
     )
     parser.add_argument(
@@ -281,7 +283,7 @@ def parse_opt():
         "--img-size",
         nargs="+",
         type=int,
-        default=[640],
+        default=[320],
         help="inference size h,w",
     )
     parser.add_argument(
