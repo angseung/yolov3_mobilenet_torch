@@ -20,6 +20,7 @@ from pathlib import Path
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
+from torchvision.transforms import Normalize
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
@@ -74,6 +75,7 @@ def run(
     hide_conf=False,  # hide confidences
     half=False,  # use FP16 half-precision inference
     dnn=False,  # use OpenCV DNN for ONNX inference
+    normalize=True,
 ):
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
@@ -100,6 +102,7 @@ def run(
         model.onnx,
     )
     imgsz = check_img_size(imgsz, s=stride)  # check image size
+    transform = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
     # Half
     half &= (
@@ -135,6 +138,9 @@ def run(
         im /= 255  # 0 - 255 to 0.0 - 1.0
         if len(im.shape) == 3:
             im = im[None]  # expand for batch dim
+
+        if normalize:
+            im = transform(im)
         t2 = time_sync()
         dt[0] += t2 - t1
 
@@ -296,6 +302,7 @@ def parse_opt():
     parser.add_argument(
         "--device", default="", help="cuda device, i.e. 0 or 0,1,2,3 or cpu"
     )
+    parser.add_argument("--normalize", default=True, help="apply normalizer or not")
     parser.add_argument("--view-img", action="store_true", help="show results")
     parser.add_argument("--save-txt", action="store_true", help="save results to *.txt")
     parser.add_argument(

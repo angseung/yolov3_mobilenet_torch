@@ -23,6 +23,7 @@ import yaml
 from torch.cuda import amp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import SGD, Adam, lr_scheduler
+from torchvision.transforms import Normalize
 from tqdm import tqdm
 
 
@@ -297,6 +298,9 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).to(device)
         LOGGER.info("Using SyncBatchNorm()")
 
+    # Normalizer
+    transform = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
     # Trainloader
     train_loader, dataset = create_dataloader(
         train_path,
@@ -439,6 +443,8 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
             imgs = (
                 imgs.to(device, non_blocking=True).float() / 255
             )  # uint8 to float32, 0-255 to 0.0-1.0
+            if opt.normalize:
+                imgs = transform(imgs)
 
             # Warmup
             if ni <= nw:
@@ -675,6 +681,7 @@ def parse_opt(known=False):
         default=320,
         help="train, val image size (pixels)",
     )
+    parser.add_argument("--normalize", default=True, help="apply normalizer or not")
     parser.add_argument("--rect", action="store_true", help="rectangular training")
     parser.add_argument(
         "--resume",
