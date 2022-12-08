@@ -265,9 +265,7 @@ def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--weights",
-        # nargs="+",
         type=str,
-        # default=ROOT / "yolov3.pt",
         default=ROOT / "yolov3-nano.yaml",
         help="model path(s)",
     )

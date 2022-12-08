@@ -648,8 +648,9 @@ def parse_opt(known=False):
     )
     parser.add_argument(
         "--cfg",
+        "--config",
         type=str,
-        default=ROOT / "models/yolov3.yaml",
+        default=ROOT / "models/yolov3-nano.yaml",
         help="model.yaml path",
     )
     parser.add_argument(
@@ -673,7 +674,6 @@ def parse_opt(known=False):
         "--img",
         "--img-size",
         type=int,
-        # default=640,
         default=320,
         help="train, val image size (pixels)",
     )
