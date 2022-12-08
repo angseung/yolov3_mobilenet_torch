@@ -654,7 +654,7 @@ def parse_opt(known=False):
         help="model.yaml path",
     )
     parser.add_argument(
-        "--data", type=str, default=ROOT / "data/coco128.yaml", help="dataset.yaml path"
+        "--data", type=str, default=ROOT / "data/yperv1.yaml", help="dataset.yaml path"
     )
     parser.add_argument(
         "--hyp",
@@ -671,8 +671,6 @@ def parse_opt(known=False):
     )
     parser.add_argument(
         "--imgsz",
-        "--img",
-        "--img-size",
         type=int,
         default=320,
         help="train, val image size (pixels)",
@@ -715,7 +713,7 @@ def parse_opt(known=False):
         help="use weighted image selection for training",
     )
     parser.add_argument(
-        "--device", default="", help="cuda device, i.e. 0 or 0,1,2,3 or cpu"
+        "--device", default="0", help="cuda device, i.e. 0 or 0,1,2,3 or cpu"
     )
     parser.add_argument(
         "--multi-scale", action="store_true", help="vary img-size +/- 50%%"

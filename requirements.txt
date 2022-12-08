@@ -23,6 +23,7 @@ tensorboard>=2.4.1
 pandas>=1.1.4
 seaborn>=0.11.0
 chitra>=0.2.0
+xmltodict>=0.13.0
 
 # Export --------------------------------------
 # coremltools>=6.0  # CoreML export

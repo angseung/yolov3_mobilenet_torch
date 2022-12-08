@@ -4,7 +4,7 @@ import os
 import xmltodict
 
 
-def xml_to_json(xml_dir, json_dir):
+def xml_to_json(xml_dir: str, json_dir: str):
     for xml_file in os.listdir(xml_dir):
         print(xml_file)
         if "xml" not in xml_file:
