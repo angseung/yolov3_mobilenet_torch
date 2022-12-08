@@ -43,7 +43,9 @@ def change_bbox_json(label, box_list, save_path, fname, x, y):
         json.dump(label, f, indent=4)
 
 
-def resize_image_json(width: int, height: int, json_dir: str, json_save_path: str, image_save_path: str) -> None:
+def resize_image_json(
+    width: int, height: int, json_dir: str, json_save_path: str, image_save_path: str
+) -> None:
 
     # annotation_error_dic={}
 
