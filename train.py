@@ -192,7 +192,6 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         hyp["anchors"] value was parsed from anchors value in data/hyps/hyp.scratch.yaml
         """
         model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
-        # model = Model(cfg, ch=3, nc=62, anchors=hyp.get("anchors")).to(device)  # create
 
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
@@ -550,6 +549,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
                     plots=False,
                     callbacks=callbacks,
                     compute_loss=compute_loss,
+                    normalize=opt.normalize,
                 )
 
             # Update best mAP
@@ -630,6 +630,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
                         plots=True,
                         callbacks=callbacks,
                         compute_loss=compute_loss,
+                        normalize=opt.normalize,
                     )  # val best model with plots
                     if is_coco:
                         callbacks.run(

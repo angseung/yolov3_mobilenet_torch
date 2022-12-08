@@ -45,7 +45,7 @@ from utils.general import (
 )
 from utils.metrics import ConfusionMatrix, ap_per_class
 from utils.plots import output_to_target, plot_images, plot_val_study
-from utils.torch_utils import select_device, time_sync
+from utils.torch_utils import select_device, time_sync, normalizer
 
 
 def save_one_txt(predn, save_conf, shape, file):
@@ -134,6 +134,7 @@ def run(
     plots=True,
     callbacks=Callbacks(),
     compute_loss=None,
+    normalize=True,
 ):
     # Initialize/load model and set device
     training = model is not None
@@ -236,6 +237,7 @@ def run(
         0.0,
         0.0,
     )
+    transform = normalizer
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
     pbar = tqdm(
@@ -248,6 +250,8 @@ def run(
             targets = targets.to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
+        if normalize:
+            im = transform(im)
         nb, _, height, width = im.shape  # batch size, channels, height, width
         t2 = time_sync()
         dt[0] += t2 - t1
@@ -336,7 +340,7 @@ def run(
             callbacks.run("on_val_image_end", pred, predn, path, names, im[si])
 
         # Plot images
-        if plots and batch_i < 3:
+        if plots and batch_i < 300:
             f = save_dir / f"val_batch{batch_i}_labels.jpg"  # labels
             Thread(
                 target=plot_images, args=(im, targets, paths, f, names), daemon=True
