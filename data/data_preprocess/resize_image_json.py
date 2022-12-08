@@ -1,5 +1,7 @@
 # 이미지 한장씩 변수로 받음
 # fname 이미지 이름
+import sys
+import getopt
 import json
 import os
 from chitra.image import Chitra
@@ -11,10 +13,8 @@ from tqdm import tqdm
 import cv2
 import numpy as np
 import os
-import xmltodict
 import json
 from PIL import Image, ImageDraw
-import sys, getopt
 
 
 def drawBox(boxes, image, fname, image_save_path):
@@ -43,7 +43,7 @@ def change_bbox_json(label, box_list, save_path, fname, x, y):
         json.dump(label, f, indent=4)
 
 
-def resize_image_json(x, y, json_dir, json_save_path, image_save_path):
+def resize_image_json(width: int, height: int, json_dir: str, json_save_path: str, image_save_path: str) -> None:
 
     # annotation_error_dic={}
 
@@ -96,7 +96,7 @@ def resize_image_json(x, y, json_dir, json_save_path, image_save_path):
                         number,
                     )
 
-                    image, bboxes = image.resize_image_with_bbox((x, y))
+                    image, bboxes = image.resize_image_with_bbox((width, height))
                     coordinate = tuple(bboxes[0][0]) + tuple(bboxes[0][1])
                     # print('bbox', list(coordinate))
 
@@ -108,9 +108,10 @@ def resize_image_json(x, y, json_dir, json_save_path, image_save_path):
                 # json 값 변경해서 저장
                 # 이미지 하나씩 정제
 
-                change_bbox_json(label, box_list, json_save_path, fname, x, y)
+                change_bbox_json(label, box_list, json_save_path, fname, width, height)
 
             except:
+
                 continue
 
             # check wrong annotation
