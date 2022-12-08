@@ -20,7 +20,6 @@ from pathlib import Path
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
-from torchvision.transforms import Normalize
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
@@ -45,7 +44,7 @@ from utils.general import (
     xyxy2xywh,
 )
 from utils.plots import Annotator, colors, save_one_box
-from utils.torch_utils import select_device, time_sync
+from utils.torch_utils import select_device, time_sync, normalizer
 
 
 @torch.no_grad()
@@ -102,7 +101,7 @@ def run(
         model.onnx,
     )
     imgsz = check_img_size(imgsz, s=stride)  # check image size
-    transform = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    transform = normalizer
 
     # Half
     half &= (

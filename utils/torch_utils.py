@@ -17,6 +17,7 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.transforms import Normalize
 
 from utils.general import LOGGER
 
@@ -412,3 +413,6 @@ class ModelEMA:
     def update_attr(self, model, include=(), exclude=("process_group", "reducer")):
         # Update EMA attributes
         copy_attr(self.ema, model, include, exclude)
+
+
+normalizer = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])

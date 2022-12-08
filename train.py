@@ -23,7 +23,6 @@ import yaml
 from torch.cuda import amp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import SGD, Adam, lr_scheduler
-from torchvision.transforms import Normalize
 from tqdm import tqdm
 
 
@@ -75,6 +74,7 @@ from utils.torch_utils import (
     de_parallel,
     select_device,
     torch_distributed_zero_first,
+    normalizer,
 )
 
 LOCAL_RANK = int(
@@ -299,7 +299,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         LOGGER.info("Using SyncBatchNorm()")
 
     # Normalizer
-    transform = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    transform = normalizer
 
     # Trainloader
     train_loader, dataset = create_dataloader(
