@@ -237,7 +237,7 @@ def run(
         0.0,
         0.0,
     )
-    transform = normalizer
+    transform = normalizer()
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
     pbar = tqdm(

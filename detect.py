@@ -101,7 +101,7 @@ def run(
         model.onnx,
     )
     imgsz = check_img_size(imgsz, s=stride)  # check image size
-    transform = normalizer
+    transform = normalizer()
 
     # Half
     half &= (

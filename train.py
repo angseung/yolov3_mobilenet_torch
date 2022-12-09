@@ -298,7 +298,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         LOGGER.info("Using SyncBatchNorm()")
 
     # Normalizer
-    transform = normalizer
+    transform = normalizer()
 
     # Trainloader
     train_loader, dataset = create_dataloader(

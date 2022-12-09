@@ -9,6 +9,7 @@ import os
 import platform
 import subprocess
 import time
+from typing import List
 from contextlib import contextmanager
 from copy import deepcopy
 from pathlib import Path
@@ -415,4 +416,7 @@ class ModelEMA:
         copy_attr(self.ema, model, include, exclude)
 
 
-normalizer = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+def normalizer(
+    mean: List[float] = [0.485, 0.456, 0.406], std: List[float] = [0.229, 0.224, 0.225]
+) -> nn.Module:
+    return Normalize(mean=mean, std=std)
