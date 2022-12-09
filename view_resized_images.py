@@ -35,23 +35,31 @@ for image_num in im_to_select:
     image = cv2.imread(f"{base_dir}/{fname}")
     height, width, _ = image.shape
     image_ratio = max(width, height) / min(width, height)
-    target_size = (target_im_size, int(image_ratio * target_im_size)) if width < height else (int(image_ratio * target_im_size), target_im_size)
+    target_size = (
+        (target_im_size, int(image_ratio * target_im_size))
+        if width < height
+        else (int(image_ratio * target_im_size), target_im_size)
+    )
     fig = plt.figure(figsize=(10, 10))
 
     for i, (method, method_enum) in enumerate(interpolation_methods.items()):
         plt.subplot(3, 3, i + 1)
 
         if isinstance(method_enum, list):
-            image_resized = (1.0 + k) * cv2.resize(image, dsize=target_size, interpolation=method_enum[0]) - k * cv2.resize(image, dsize=target_size, interpolation=method_enum[1])
+            image_resized = (1.0 + k) * cv2.resize(
+                image, dsize=target_size, interpolation=method_enum[0]
+            ) - k * cv2.resize(image, dsize=target_size, interpolation=method_enum[1])
             image_resized = image_resized.astype(np.uint8)
         else:
-            image_resized = cv2.resize(image, dsize=target_size, interpolation=method_enum)
+            image_resized = cv2.resize(
+                image, dsize=target_size, interpolation=method_enum
+            )
 
         plt.imshow(image_resized)
         plt.xlabel(method)
 
     plt.tight_layout()
     plt.suptitle("fname")
-    plt.show()
+    # plt.show()
     fig.savefig(f"{target_dir}/{fname}.png")
     del fig
