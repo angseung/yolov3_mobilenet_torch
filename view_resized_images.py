@@ -5,6 +5,7 @@ from typing import List, Dict, Union
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import cm as cm
 
 random.seed(123)
 base_dir: str = "./data/yperv1/images/train"
@@ -23,7 +24,7 @@ interpolation_methods: Dict[str, Union[int, List[int]]] = {
     "INTER_LINEAR_EXACT": cv2.INTER_LINEAR_EXACT,
     "INTER_NEAREST_EXACT": cv2.INTER_NEAREST_EXACT,
     "WEIGHTED_JOINT_BN": [cv2.INTER_LINEAR, cv2.INTER_NEAREST],
-    "WEIGHTED_JOINT_CN": [cv2.INTER_CUBIC, cv2.INTER_NEAREST],
+    "INTER_AREA_GRAY": cv2.COLOR_BGR2GRAY,
 }
 k = 0.27
 
@@ -50,12 +51,20 @@ for image_num in im_to_select:
                 image, dsize=target_size, interpolation=method_enum[0]
             ) - k * cv2.resize(image, dsize=target_size, interpolation=method_enum[1])
             image_resized = image_resized.astype(np.uint8)
+            plt.imshow(image_resized)
+        elif "GRAY" in method:
+            image_resized = cv2.resize(
+                image, dsize=target_size, interpolation=cv2.INTER_AREA
+            )
+            image_resized = cv2.cvtColor(image_resized, method_enum)
+            plt.imshow(image_resized, cmap=cm.gray)
+
         else:
             image_resized = cv2.resize(
                 image, dsize=target_size, interpolation=method_enum
             )
+            plt.imshow(image_resized)
 
-        plt.imshow(image_resized)
         plt.xlabel(method)
 
     plt.tight_layout()
