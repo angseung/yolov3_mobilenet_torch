@@ -75,6 +75,7 @@ def run(
     half=False,  # use FP16 half-precision inference
     dnn=False,  # use OpenCV DNN for ONNX inference
     normalize=True,
+    gray=False,
 ):
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
@@ -290,6 +291,10 @@ def parse_opt():
         help="inference size h,w",
     )
     parser.add_argument(
+        "--normalize", action="store_true", help="apply normalizer or not"
+    )
+    parser.add_argument("--gray", action="store_true", help="apply normalizer or not")
+    parser.add_argument(
         "--conf-thres", type=float, default=0.25, help="confidence threshold"
     )
     parser.add_argument(
@@ -301,7 +306,6 @@ def parse_opt():
     parser.add_argument(
         "--device", default="", help="cuda device, i.e. 0 or 0,1,2,3 or cpu"
     )
-    parser.add_argument("--normalize", action="store_true", help="apply normalizer or not")
     parser.add_argument("--view-img", action="store_true", help="show results")
     parser.add_argument("--save-txt", action="store_true", help="save results to *.txt")
     parser.add_argument(
