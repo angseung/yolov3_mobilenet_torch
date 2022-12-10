@@ -301,7 +301,7 @@ def parse_opt():
     parser.add_argument(
         "--device", default="", help="cuda device, i.e. 0 or 0,1,2,3 or cpu"
     )
-    parser.add_argument("--normalize", default=True, help="apply normalizer or not")
+    parser.add_argument("--normalize", action="store_true", help="apply normalizer or not")
     parser.add_argument("--view-img", action="store_true", help="show results")
     parser.add_argument("--save-txt", action="store_true", help="save results to *.txt")
     parser.add_argument(

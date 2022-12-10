@@ -682,7 +682,7 @@ def parse_opt(known=False):
         default=320,
         help="train, val image size (pixels)",
     )
-    parser.add_argument("--normalize", default=True, help="apply normalizer or not")
+    parser.add_argument("--normalize", action="store_true", help="apply normalizer or not")
     parser.add_argument("--rect", action="store_true", help="rectangular training")
     parser.add_argument(
         "--resume",
