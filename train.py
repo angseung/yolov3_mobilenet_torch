@@ -182,6 +182,8 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     check_suffix(weights, ".pt")  # check weights
     # pretrained = weights.endswith(".pt")
     pretrained = False
+
+    # TODO: operation test of train resume part below...
     if pretrained:
         with torch_distributed_zero_first(LOCAL_RANK):
             weights = attempt_download(weights)  # download if not found locally
@@ -699,7 +701,9 @@ def parse_opt(known=False):
         "--normalize", action="store_true", help="apply normalizer or not"
     )
     parser.add_argument("--gray", action="store_true", help="apply normalizer or not")
-    parser.add_argument("--setseed", action="store_true", help="apply normalizer or not")
+    parser.add_argument(
+        "--setseed", action="store_true", help="apply normalizer or not"
+    )
     parser.add_argument(
         "--seednum",
         type=int,
@@ -744,7 +748,7 @@ def parse_opt(known=False):
         help="use weighted image selection for training",
     )
     parser.add_argument(
-        "--device", default="0", help="cuda device, i.e. 0 or 0,1,2,3 or cpu"
+        "--device", default="", help="cuda device, i.e. 0 or 0,1,2,3 or cpu"
     )
     parser.add_argument(
         "--multi-scale", action="store_true", help="vary img-size +/- 50%%"
