@@ -84,6 +84,19 @@ RANK = int(os.getenv("RANK", -1))
 WORLD_SIZE = int(os.getenv("WORLD_SIZE", 1))
 
 
+def set_seed(random_seed: int = 123) -> None:
+    g = torch.Generator()
+    g.manual_seed(random_seed)
+    torch.manual_seed(random_seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    random.seed(random_seed)
+    torch.cuda.manual_seed(random_seed)
+    torch.cuda.manual_seed_all(random_seed)  # multi-GPU
+    np.random.seed(random_seed)
+    # torch.use_deterministic_algorithms(True)
+
+
 def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     (
         save_dir,
@@ -686,6 +699,13 @@ def parse_opt(known=False):
         "--normalize", action="store_true", help="apply normalizer or not"
     )
     parser.add_argument("--gray", action="store_true", help="apply normalizer or not")
+    parser.add_argument("--setseed", action="store_true", help="apply normalizer or not")
+    parser.add_argument(
+        "--seednum",
+        type=int,
+        default=123,
+        help="random seed value",
+    )
     parser.add_argument("--rect", action="store_true", help="rectangular training")
     parser.add_argument(
         "--resume",
@@ -809,6 +829,9 @@ def parse_opt(known=False):
 
 
 def main(opt, callbacks=Callbacks()):
+    if opt.setseed:
+        set_seed(opt.seednum)
+
     # Checks
     if RANK in [-1, 0]:
         print_args(FILE.stem, opt)
