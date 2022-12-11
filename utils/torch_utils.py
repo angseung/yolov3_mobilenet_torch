@@ -75,6 +75,8 @@ def select_device(device="", batch_size=None, newline=True):
         ), f"CUDA unavailable, invalid device {device} requested"  # check availability
 
     cuda = not cpu and torch.cuda.is_available()
+    mps = not cpu and torch.backends.mps.is_available()
+
     if cuda:
         devices = (
             device.split(",") if device else "0"
@@ -96,6 +98,10 @@ def select_device(device="", batch_size=None, newline=True):
     LOGGER.info(
         s.encode().decode("ascii", "ignore") if platform.system() == "Windows" else s
     )  # emoji-safe
+
+    if mps:
+        return torch.device("mps")
+
     return torch.device("cuda:0" if cuda else "cpu")
 
 

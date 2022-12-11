@@ -162,7 +162,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
 
     # Config
     plots = not evolve  # create plots
-    cuda = device.type != "cpu"
+    cuda = device.type != "cpu" and device.type != "mps"
     init_seeds(1 + RANK)
     with torch_distributed_zero_first(LOCAL_RANK):
         data_dict = data_dict or check_dataset(data)  # check if None
@@ -383,9 +383,15 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     hyp["label_smoothing"] = opt.label_smoothing
     model.nc = nc  # attach number of classes to model
     model.hyp = hyp  # attach hyperparameters to model
-    model.class_weights = (
-        labels_to_class_weights(dataset.labels, nc).to(device) * nc
-    )  # attach class weights
+
+    if device.type == "mps":
+        model.class_weights = (
+            labels_to_class_weights(dataset.labels, nc).to(device, dtype=torch.float32) * nc
+        )  # attach class weights
+    else:
+        model.class_weights = (
+            labels_to_class_weights(dataset.labels, nc).to(device) * nc
+        )  # attach class weights
     model.names = names
 
     # Start training

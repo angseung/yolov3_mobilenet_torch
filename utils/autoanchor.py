@@ -64,6 +64,9 @@ def check_anchors(dataset, model, thr=4.0, imgsz=640):
             LOGGER.info(f"{PREFIX}ERROR: {e}")
         new_bpr = metric(anchors)[0]
         if new_bpr > bpr:  # replace anchors
+            if m.anchors.device.type == "mps":
+                # convert dtype from np.float64 to np.float32 for MPS support
+                anchors = anchors.astype(np.float32)
             anchors = torch.tensor(anchors, device=m.anchors.device).type_as(m.anchors)
             m.anchors[:] = anchors.clone().view_as(m.anchors) / m.stride.to(
                 m.anchors.device
