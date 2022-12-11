@@ -180,8 +180,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
 
     # Model
     check_suffix(weights, ".pt")  # check weights
-    # pretrained = weights.endswith(".pt")
-    pretrained = False
+    pretrained = weights.endswith(".pt")
 
     # TODO: operation test of train resume part below...
     if pretrained:
