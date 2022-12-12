@@ -181,7 +181,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     check_suffix(weights, ".pt")  # check weights
     pretrained = weights.endswith(".pt")
 
-    # TODO: operation test of train resume part below...
+    # TODO: operation test of fine-tuning part below...
     if pretrained:
         with torch_distributed_zero_first(LOCAL_RANK):
             weights = attempt_download(weights)  # download if not found locally
@@ -201,9 +201,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
             f"Transferred {len(csd)}/{len(model.state_dict())} items from {weights}"
         )  # report
     else:
-        """
-        hyp["anchors"] value was parsed from anchors value in data/hyps/hyp.scratch.yaml
-        """
+        # hyp["anchors"] value was parsed from anchors value in data/hyps/hyp.scratch.yaml
         model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
 
     # Freeze
@@ -840,6 +838,7 @@ def main(opt, callbacks=Callbacks()):
         check_requirements(exclude=["thop"])
 
     # Resume
+    # TODO: operation test of train resume part below...
     if (
         opt.resume and not check_wandb_resume(opt) and not opt.evolve
     ):  # resume an interrupted run
