@@ -84,7 +84,7 @@ RANK = int(os.getenv("RANK", -1))
 WORLD_SIZE = int(os.getenv("WORLD_SIZE", 1))
 
 
-def set_seed(random_seed: int = 123) -> None:
+def set_seeds(random_seed: int = 123) -> None:
     g = torch.Generator()
     g.manual_seed(random_seed)
     torch.manual_seed(random_seed)
@@ -163,7 +163,6 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     # Config
     plots = not evolve  # create plots
     cuda = device.type != "cpu"
-    init_seeds(1 + RANK)
     with torch_distributed_zero_first(LOCAL_RANK):
         data_dict = data_dict or check_dataset(data)  # check if None
     train_path, val_path = data_dict["train"], data_dict["val"]
@@ -322,7 +321,6 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         gs,
         single_cls,
         hyp=hyp,
-        # augment=True,
         augment=False,
         cache=opt.cache,
         rect=opt.rect,
