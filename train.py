@@ -831,7 +831,7 @@ def parse_opt(known=False):
 
 def main(opt, callbacks=Callbacks()):
     if opt.setseed:
-        set_seed(opt.seednum)
+        set_seeds(opt.seednum)
 
     # Checks
     if RANK in [-1, 0]:
