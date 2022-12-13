@@ -1,4 +1,5 @@
 from typing import List
+import numpy as np
 
 class_labels: List[str] = [
     "0",
@@ -75,13 +76,15 @@ class_labels: List[str] = [
 ]
 
 if __name__ == "__main__":
-    for val in class_labels:
-        if class_labels.count(val) != 1:
-            print(val)
-
     assert len(class_labels) == len(set(class_labels))
 
     for index, value in enumerate(class_labels):
         print(f"{index} {value}")
+
+    label_hist = np.load("labels.npy")[:, 0].astype(np.uint8)
+
+    for index, label in enumerate(class_labels):
+        bins = np.count_nonzero(label_hist == index)
+        print(f"{index} {label} {bins}")
 
     print("label check done")
