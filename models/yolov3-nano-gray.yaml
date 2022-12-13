@@ -10,7 +10,7 @@ anchors:
   - [116,90, 156,198, 373,326]  # P5/32
 ch: 1
 
-# darknet53 backbone
+# mobilenetv1 backbone
 backbone:
   # [from, number, module, args]                                      output_shape
   [[-1, 1, Conv, [32, 3, 1]],  # 0                                    (None, 32, 320, 320)
