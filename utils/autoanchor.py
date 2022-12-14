@@ -142,6 +142,7 @@ def kmean_anchors(
     wh0 = np.concatenate([l[:, 3:5] * s for s, l in zip(shapes, dataset.labels)])  # wh
 
     # Filter
+    # TODO: count the number of objects which are < {3, 5, 10, 20, 40} pixels in size
     i = (wh0 < 3.0).any(1).sum()
     if i:
         LOGGER.info(
