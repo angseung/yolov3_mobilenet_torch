@@ -178,8 +178,11 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     )  # COCO dataset
 
     # Model
-    check_suffix(weights, ".pt")  # check weights
-    pretrained = weights.endswith(".pt")
+    if "." not in weights:  # skip suffix check if opt.weights does not have suffix
+        pretrained = False
+    else:
+        check_suffix(weights, ".pt")  # check weights
+        pretrained = weights.endswith(".pt")
 
     # TODO: operation test of fine-tuning part below...
     if pretrained:
