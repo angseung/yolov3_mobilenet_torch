@@ -841,7 +841,7 @@ def main(opt, callbacks=Callbacks()):
         check_requirements(exclude=["thop"])
 
     # Resume
-    # TODO: operation test of train resume part below...
+    # it restarts training model from last.pt in the latest runs/train/exp
     if (
         opt.resume and not check_wandb_resume(opt) and not opt.evolve
     ):  # resume an interrupted run
