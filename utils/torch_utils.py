@@ -422,5 +422,5 @@ def normalizer(
     return Normalize(mean=mean, std=std)
 
 
-def to_grayscale(imgs):
-    return transforms.Grayscale(num_output_channels=3)(imgs)
+def to_grayscale(num_output_channels: int = 3) -> nn.Module:
+    return transforms.Grayscale(num_output_channels=num_output_channels)
