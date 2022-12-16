@@ -238,7 +238,8 @@ def run(
         0.0,
         0.0,
     )
-    transform = normalizer()
+    transform_normalizer = normalizer()
+    transform_to_gray = to_grayscale()
 
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
@@ -253,10 +254,10 @@ def run(
         im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
         if normalize:
-            im = transform(im)
+            im = transform_normalizer(im)
 
-        if grayscale:
-            im = to_grayscale(im)
+        if gray:
+            im = transform_to_gray(im)
         nb, _, height, width = im.shape  # batch size, channels, height, width
         t2 = time_sync()
         dt[0] += t2 - t1

@@ -315,7 +315,10 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         LOGGER.info("Using SyncBatchNorm()")
 
     # Normalizer
-    transform = normalizer()
+    transform_normalizer = normalizer()
+
+    # Grayscale Convertor
+    transform_to_gray = to_grayscale()
 
     # Trainloader
     train_loader, dataset = create_dataloader(
@@ -459,10 +462,10 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
                 imgs.to(device, non_blocking=True).float() / 255
             )  # uint8 to float32, 0-255 to 0.0-1.0
             if opt.normalize:
-                imgs = transform(imgs)
+                imgs = transform_normalizer(imgs)
 
             if opt.gray:
-                imgs = to_grayscale(imgs)
+                imgs = transform_to_gray(imgs)
 
             # Warmup
             if ni <= nw:
