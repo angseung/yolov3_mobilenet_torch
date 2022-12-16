@@ -653,7 +653,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
                         callbacks=callbacks,
                         compute_loss=compute_loss,
                         normalize=opt.normalize,
-                        grays=opt.gray,
+                        gray=opt.gray,
                     )  # val best model with plots
                     if is_coco:
                         callbacks.run(

@@ -238,7 +238,7 @@ def run(
         0.0,
         0.0,
     )
-    transform_normalizer = normalizer()
+    transform_normalize = normalizer()
     transform_to_gray = to_grayscale()
 
     loss = torch.zeros(3, device=device)
@@ -254,7 +254,7 @@ def run(
         im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
         if normalize:
-            im = transform_normalizer(im)
+            im = transform_normalize(im)
 
         if gray:
             im = transform_to_gray(im)
