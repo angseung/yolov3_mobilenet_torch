@@ -8,6 +8,7 @@ import json
 import math
 import platform
 import warnings
+from typing import List
 from copy import copy
 from pathlib import Path
 
@@ -414,8 +415,8 @@ class Concat(nn.Module):
         super().__init__()
         self.d = dimension
 
-    def forward(self, x):
-        return torch.cat(x, self.d)
+    def forward(self, x: List[torch.Tensor]):
+        return torch.cat(x, dim=self.d)
 
 
 class DetectMultiBackend(nn.Module):
