@@ -44,7 +44,7 @@ from utils.general import (
     xyxy2xywh,
 )
 from utils.plots import Annotator, colors, save_one_box
-from utils.torch_utils import select_device, time_sync, normalizer
+from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 
 
 @torch.no_grad()
@@ -102,7 +102,8 @@ def run(
         model.onnx,
     )
     imgsz = check_img_size(imgsz, s=stride)  # check image size
-    transform = normalizer()
+    transform_normalize = normalizer()
+    transform_to_gray = to_grayscale()
 
     # Half
     half &= (
@@ -140,7 +141,10 @@ def run(
             im = im[None]  # expand for batch dim
 
         if normalize:
-            im = transform(im)
+            im = transform_normalize(im)
+        if gray:
+            im = transform_to_gray(im)
+
         t2 = time_sync()
         dt[0] += t2 - t1
 
