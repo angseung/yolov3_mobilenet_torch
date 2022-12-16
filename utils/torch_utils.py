@@ -18,9 +18,9 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.transforms import Normalize
-
+from torchvision.transforms import Normalize, Grayscale
 from utils.general import LOGGER
+import torchvision.transforms as transforms
 
 try:
     import thop  # for FLOPs computation
@@ -420,3 +420,7 @@ def normalizer(
     mean: List[float] = [0.485, 0.456, 0.406], std: List[float] = [0.229, 0.224, 0.225]
 ) -> nn.Module:
     return Normalize(mean=mean, std=std)
+
+
+def to_grayscale(imgs):
+    return transforms.Grayscale(num_output_channels=3)(imgs)

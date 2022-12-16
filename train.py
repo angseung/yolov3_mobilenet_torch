@@ -24,6 +24,7 @@ from torch.cuda import amp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import SGD, Adam, lr_scheduler
 from tqdm import tqdm
+import torchvision.transforms as transforms
 
 
 FILE = Path(__file__).resolve()
@@ -75,7 +76,9 @@ from utils.torch_utils import (
     select_device,
     torch_distributed_zero_first,
     normalizer,
+    to_grayscale
 )
+
 
 LOCAL_RANK = int(
     os.getenv("LOCAL_RANK", -1)
@@ -458,6 +461,10 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
             if opt.normalize:
                 imgs = transform(imgs)
 
+            if opt.grayscale:
+                imgs=to_grayscale(imgs)
+                
+
             # Warmup
             if ni <= nw:
                 xi = [0, nw]  # x interp
@@ -698,7 +705,7 @@ def parse_opt(known=False):
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"
     )
-    parser.add_argument("--gray", action="store_true", help="apply normalizer or not")
+    parser.add_argument("--gray", action="store_true", help="apply grayscale or not")
     parser.add_argument(
         "--setseed", action="store_true", help="apply normalizer or not"
     )
@@ -708,6 +715,9 @@ def parse_opt(known=False):
         default=123,
         help="random seed value",
     )
+
+    # gray arg
+    parser.add_argument("--grayscale", action="store_true", help="apply grayscale in image")
     parser.add_argument("--rect", action="store_true", help="rectangular training")
     parser.add_argument(
         "--resume",
