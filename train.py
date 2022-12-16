@@ -76,7 +76,7 @@ from utils.torch_utils import (
     select_device,
     torch_distributed_zero_first,
     normalizer,
-    to_grayscale
+    to_grayscale,
 )
 
 
@@ -461,9 +461,8 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
             if opt.normalize:
                 imgs = transform(imgs)
 
-            if opt.grayscale:
-                imgs=to_grayscale(imgs)
-                
+            if opt.gray:
+                imgs = to_grayscale(imgs)
 
             # Warmup
             if ni <= nw:
@@ -651,6 +650,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
                         callbacks=callbacks,
                         compute_loss=compute_loss,
                         normalize=opt.normalize,
+                        grays=opt.gray,
                     )  # val best model with plots
                     if is_coco:
                         callbacks.run(
@@ -717,7 +717,6 @@ def parse_opt(known=False):
     )
 
     # gray arg
-    parser.add_argument("--grayscale", action="store_true", help="apply grayscale in image")
     parser.add_argument("--rect", action="store_true", help="rectangular training")
     parser.add_argument(
         "--resume",
@@ -851,7 +850,7 @@ def main(opt, callbacks=Callbacks()):
         check_requirements(exclude=["thop"])
 
     # Resume
-    # TODO: operation test of train resume part below...
+    # it restarts training model from last.pt in the latest runs/train/exp
     if (
         opt.resume and not check_wandb_resume(opt) and not opt.evolve
     ):  # resume an interrupted run

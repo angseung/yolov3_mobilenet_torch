@@ -45,9 +45,7 @@ from utils.general import (
 )
 from utils.metrics import ConfusionMatrix, ap_per_class
 from utils.plots import output_to_target, plot_images, plot_val_study
-from utils.torch_utils import select_device, time_sync, normalizer,to_grayscale
-
-
+from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 
 
 def save_one_txt(predn, save_conf, shape, file):
@@ -137,7 +135,7 @@ def run(
     callbacks=Callbacks(),
     compute_loss=None,
     normalize=True,
-    grayscale=True
+    gray=True,
 ):
     # Initialize/load model and set device
     training = model is not None
@@ -241,7 +239,6 @@ def run(
         0.0,
     )
     transform = normalizer()
-
 
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []

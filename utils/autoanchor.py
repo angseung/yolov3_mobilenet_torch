@@ -147,6 +147,18 @@ def kmean_anchors(
         LOGGER.info(
             f"{PREFIX}WARNING: Extremely small objects found. {i} of {len(wh0)} labels are < 3 pixels in size."
         )
+
+    i = (wh0 < 10.0).any(1).sum()
+    if i:
+        LOGGER.info(
+            f"{PREFIX}WARNING: Extremely small objects found. {i} of {len(wh0)} labels are < 10 pixels in size."
+        )
+
+    i = (wh0 < 5.0).any(1).sum()
+    if i:
+        LOGGER.info(
+            f"{PREFIX}WARNING: Extremely small objects found. {i} of {len(wh0)} labels are < 5 pixels in size."
+        )
     wh = wh0[(wh0 >= 2.0).any(1)]  # filter > 2 pixels
     # wh = wh * (np.random.rand(wh.shape[0], 1) * 0.9 + 0.1)  # multiply by random scale 0-1
 
