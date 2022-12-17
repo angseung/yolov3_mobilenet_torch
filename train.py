@@ -318,7 +318,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     transform_normalizer = normalizer()
 
     # Grayscale Convertor
-    transform_to_gray = to_grayscale()
+    transform_to_gray = to_grayscale(num_output_channels=3)
 
     # Trainloader
     train_loader, dataset = create_dataloader(
