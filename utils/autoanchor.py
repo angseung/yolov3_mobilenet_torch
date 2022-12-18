@@ -142,12 +142,6 @@ def kmean_anchors(
     wh0 = np.concatenate([l[:, 3:5] * s for s, l in zip(shapes, dataset.labels)])  # wh
 
     # Filter
-    i = (wh0 < 3.0).any(1).sum()
-    if i:
-        LOGGER.info(
-            f"{PREFIX}WARNING: Extremely small objects found. {i} of {len(wh0)} labels are < 3 pixels in size."
-        )
-
     i = (wh0 < 10.0).any(1).sum()
     if i:
         LOGGER.info(
@@ -159,7 +153,20 @@ def kmean_anchors(
         LOGGER.info(
             f"{PREFIX}WARNING: Extremely small objects found. {i} of {len(wh0)} labels are < 5 pixels in size."
         )
-    wh = wh0[(wh0 >= 2.0).any(1)]  # filter > 2 pixels
+
+    i = (wh0 < 3.0).any(1).sum()
+    if i:
+        LOGGER.info(
+            f"{PREFIX}WARNING: Extremely small objects were removed. {i} of {len(wh0)} labels are < 3 pixels in size."
+        )
+    wh = wh0[(wh0 >= 3.0).any(1)]
+
+    # i = (wh0 < 2.0).any(1).sum()
+    # wh = wh0[(wh0 >= 2.0).any(1)]  # filter > 2 pixels
+    # if i:
+    #     LOGGER.info(
+    #         f"{PREFIX}WARNING: Extremely small objects deleted. {i} of {len(wh0)} labels are < 2 pixels in size."
+    #     )
     # wh = wh * (np.random.rand(wh.shape[0], 1) * 0.9 + 0.1)  # multiply by random scale 0-1
 
     # Kmeans calculation
