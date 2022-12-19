@@ -20,6 +20,7 @@ from pathlib import Path
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
+import yaml
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
@@ -166,6 +167,22 @@ def run(
 
         # Second-stage classifier (optional)
         # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
+
+        # dump inference config to opt.yaml
+        with open(save_dir / "opt.yaml", "w") as f:
+            global opt
+            opt_dict = vars(opt)
+            opt_dict["weights"] = str(opt_dict["weights"])
+            opt_dict["source"] = str(opt_dict["source"])
+
+            if isinstance(opt_dict["imgsz"], list):
+                opt_dict["imgsz"] = opt_dict["imgsz"][0]
+            else:
+                opt_dict["imgsz"] = str(opt_dict["imgsz"])
+
+            opt_dict["project"] = str(opt_dict["project"])
+
+            yaml.safe_dump(opt_dict, f, sort_keys=False)
 
         # Process predictions
         for i, det in enumerate(pred):  # per image
