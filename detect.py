@@ -78,6 +78,8 @@ def run(
     normalize=True,
     gray=False,
 ):
+    assert not (normalize and gray)  # select gray or normalize. when selected both, escapes.
+
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
