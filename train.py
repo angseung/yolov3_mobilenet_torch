@@ -24,7 +24,6 @@ from torch.cuda import amp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import SGD, Adam, lr_scheduler
 from tqdm import tqdm
-import torchvision.transforms as transforms
 
 
 FILE = Path(__file__).resolve()
