@@ -107,7 +107,7 @@ class Annotator:
         self,
         im,
         line_width=None,
-        font_size=None,
+        font_size=30,
         font="fonts/NanumBarunGothic.ttf",
         pil=False,
         example="abc",

@@ -218,6 +218,10 @@ def run(
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
+                # Reorder: number first, Korean Last
+                _, indices = torch.sort(det[:, 5], descending=True)
+                det = det[indices]
+
                 # Print results
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
