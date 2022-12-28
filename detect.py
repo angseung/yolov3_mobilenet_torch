@@ -112,11 +112,12 @@ def run(
     transform_normalize = normalizer()
     transform_to_gray = to_grayscale(num_output_channels=3)
 
-    # Mapping class index to real value
-    class_labels = map_class_index_to_target(names)
-    if class_labels:
-        model.names = class_labels
-        names = class_labels
+    # Mapping class index to real value for yper data
+    if len(names) == 67:
+        class_labels = map_class_index_to_target(names)
+        if class_labels:
+            model.names = class_labels
+            names = class_labels
 
     # Half
     half &= (
@@ -218,7 +219,7 @@ def run(
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
-                # Reorder: number first, Korean Last
+                # Reorder: number first, Korean last
                 _, indices = torch.sort(det[:, 5], descending=True)
                 det = det[indices]
 
