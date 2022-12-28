@@ -80,7 +80,7 @@ class Colors:
 colors = Colors()  # create instance for 'from utils.plots import colors'
 
 
-def check_font(font="Arial.ttf", size=10):
+def check_font(font="fonts/NanumBarunGothic.ttf", size=10):
     # Return a PIL TrueType Font, downloading to CONFIG_DIR if necessary
     font = Path(font)
     font = font if font.exists() else (CONFIG_DIR / font.name)
@@ -108,7 +108,7 @@ class Annotator:
         im,
         line_width=None,
         font_size=None,
-        font="Arial.ttf",
+        font="fonts/NanumBarunGothic.ttf",
         pil=False,
         example="abc",
     ):
@@ -120,7 +120,8 @@ class Annotator:
             self.im = im if isinstance(im, Image.Image) else Image.fromarray(im)
             self.draw = ImageDraw.Draw(self.im)
             self.font = check_font(
-                font="Arial.Unicode.ttf" if is_chinese(example) else font,
+                # font="Arial.Unicode.ttf" if is_chinese(example) else font,
+                font="fonts/NanumBarunGothic.ttf" if is_chinese(example) else font,
                 size=font_size or max(round(sum(self.im.size) / 2 * 0.035), 12),
             )
         else:  # use cv2

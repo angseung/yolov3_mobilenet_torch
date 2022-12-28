@@ -44,6 +44,8 @@ from utils.general import (
     strip_optimizer,
     xyxy2xywh,
 )
+
+from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 
@@ -78,7 +80,9 @@ def run(
     normalize=True,
     gray=False,
 ):
-    assert not (normalize and gray)  # select gray or normalize. when selected both, escapes.
+    assert not (
+        normalize and gray
+    )  # select gray or normalize. when selected both, escapes.
 
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
@@ -107,6 +111,12 @@ def run(
     imgsz = check_img_size(imgsz, s=stride)  # check image size
     transform_normalize = normalizer()
     transform_to_gray = to_grayscale(num_output_channels=3)
+
+    # Mapping class index to real value
+    class_labels = map_class_index_to_target(names)
+    if class_labels:
+        model.names = class_labels
+        names = class_labels
 
     # Half
     half &= (

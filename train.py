@@ -842,7 +842,9 @@ def parse_opt(known=False):
 
 
 def main(opt, callbacks=Callbacks()):
-    assert not (opt.normalize and opt.gray)  # select gray or normalize. when selected both, escapes.
+    assert not (
+        opt.normalize and opt.gray
+    )  # select gray or normalize. when selected both, escapes.
     if opt.setseed:
         set_seeds(opt.seednum)
 
