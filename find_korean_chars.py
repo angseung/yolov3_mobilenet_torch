@@ -86,4 +86,4 @@ for labels in label_list:
             bbox_list = bbox.split()
 
             if int(bbox_list[0]) >= 50:
-                print(f"labels contains {label_list[int(bbox_list[0])]}")
+                print(f"{labels[:-4]} contains {class_labels[int(bbox_list[0])]}")

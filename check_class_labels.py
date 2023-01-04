@@ -75,16 +75,33 @@ class_labels: List[str] = [
     "제",  # 제주
 ]
 
+labels_list = []
+
 if __name__ == "__main__":
     assert len(class_labels) == len(set(class_labels))
 
     for index, value in enumerate(class_labels):
         print(f"{index} {value}")
 
-    label_hist = np.load("labels.npy")[:, 0].astype(np.uint8)
+    label_hist = np.load("./data/yperv1/labels/train.cache", allow_pickle=True).item()
+
+    for i, (key, val) in enumerate(label_hist.items()):
+        if key == "hash":
+            break
+        labels = val[0][:, 0].astype(np.uint8).flatten().tolist()
+        labels_list += labels
+
+        if (30 in labels or
+            31 in labels or
+            35 in labels or
+            39 in labels or
+            43 in labels):
+            print(key)
+
+    labels_list = np.array(labels_list)
 
     for index, label in enumerate(class_labels):
-        bins = np.count_nonzero(label_hist == index)
+        bins = np.count_nonzero(labels_list == index)
         print(f"{index} {label} {bins}")
 
     print("label check done")
