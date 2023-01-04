@@ -21,14 +21,25 @@ im_list_swim_labels = os.listdir(base_dir_labels)
 #     assert fname[-4:] == ".jpg"
 #     shutil.move(f"{base_dir}/{fname}", f"./data/yperv1/images/deleted/{fname}")
 #
-for fname in im_list_swim:
-    if not os.path.isfile(f"./data/yperv1/labels/train/{fname[:-4]}.txt"):
-        print(fname)
+# for fname in im_list_swim:
+#     if not os.path.isfile(f"./data/yperv1/labels/train/{fname[:-4]}.txt"):
+#         print(fname)
+#
+# for fname in im_list_swim_labels:
+#     if not os.path.isfile(f"./data/yperv1/images/train/{fname[:-4]}.jpg"):
+#         print(fname)
 
-for fname in im_list_swim_labels:
-    if not os.path.isfile(f"./data/yperv1/images/train/{fname[:-4]}.jpg"):
-        print(fname)
+with open("drop_list.txt", encoding="utf-8") as f:
+    f_list = f.readlines()
 
+for fname in f_list:
+    fname = fname[:-1]
+
+    if not os.path.isdir("/data_yper/yperv1/images/deleted"):
+        os.makedirs("/data_yper/yperv1/images/deleted")
+
+    shutil.move(f"/data_yper/yperv1/images/train/{fname}.jpg", f"/data_yper/yperv1/images/deleted/{fname}.jpg")
+    shutil.move(f"/data_yper/yperv1/labels/train/{fname}.txt", f"/data_yper/yperv1/labels/deleted/{fname}.txt")
 #
 # with open("validation_list.txt", "r") as f:
 #     validation_list = f.readlines()
