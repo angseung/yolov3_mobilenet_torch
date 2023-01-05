@@ -2,7 +2,7 @@ import os
 import random
 import numpy as np
 import cv2
-from utils.augment_utils import parse_label, label_yolo2voc, label_voc2yolo, find_draw_region
+from utils.augment_utils import parse_label, label_yolo2voc, label_voc2yolo, find_draw_region, write_label
 
 
 if __name__ == "__main__":
@@ -48,6 +48,8 @@ if __name__ == "__main__":
         fg_label_voc[:, [2, 4]] += abs_ytl
         fg_label_yolo = label_voc2yolo(fg_label_voc, bg_h, bg_w)
 
-        cv2.imwrite(f"{target_dir}/images/train/{fname}.jpg", bg_img)
+        label = np.concatenate((fg_label_yolo, bg_label), axis=0)
 
-    
+        # export augmented data
+        cv2.imwrite(f"{target_dir}/images/train/{fname}.jpg", bg_img)
+        write_label(f"{target_dir}/labels/train", fname, label)

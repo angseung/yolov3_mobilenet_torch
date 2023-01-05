@@ -1,3 +1,4 @@
+import os
 from typing import Tuple
 import numpy as np
 
@@ -144,3 +145,14 @@ def find_draw_region(img: np.ndarray, label: np.ndarray, foreground: np.ndarray)
         area = (selected_region, xbr, ybr, w, h)
 
     return area
+
+
+def write_label(target_dir: str, fname: str, bboxes: np.ndarray) -> None:
+    num_boxes = bboxes.shape[0]
+
+    with open(f"{target_dir}/{fname}.txt", "w") as f:
+        for i in range(num_boxes):
+            target_str = f"{int(bboxes[i][0])} {bboxes[i][1]} {bboxes[i][2]} {bboxes[i][3]} {bboxes[i][4]}"
+            f.write(f"{target_str}\n")
+
+
