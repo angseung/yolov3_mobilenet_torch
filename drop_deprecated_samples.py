@@ -10,9 +10,15 @@ for line in img_list:
     fname = line.split()[0]
 
     if os.path.isfile(f"{base_addr}/train/{fname}.jpg"):
-        shutil.move(f"{base_addr}/train/{fname}.jpg", f"{base_addr}/deleted/{fname}.jpg")
-        shutil.move(f"{base_addr_label}/train/{fname}.txt", f"{base_addr}/deleted/{fname}.txt")
+        shutil.move(
+            f"{base_addr}/train/{fname}.jpg", f"{base_addr}/deleted/{fname}.jpg"
+        )
+        shutil.move(
+            f"{base_addr_label}/train/{fname}.txt", f"{base_addr}/deleted/{fname}.txt"
+        )
 
     if os.path.isfile(f"{base_addr}/val/{fname}.jpg"):
         shutil.move(f"{base_addr}/val/{fname}.jpg", f"{base_addr}/deleted/{fname}.jpg")
-        shutil.move(f"{base_addr_label}/val/{fname}.txt", f"{base_addr}/deleted/{fname}.txt")
+        shutil.move(
+            f"{base_addr_label}/val/{fname}.txt", f"{base_addr}/deleted/{fname}.txt"
+        )

@@ -58,7 +58,9 @@ def label_voc2yolo(label_voc: np.ndarray, h: int, w: int) -> np.ndarray:
     return label_yolo
 
 
-def find_draw_region(img: np.ndarray, label: np.ndarray, foreground: np.ndarray) -> Tuple[int]:
+def find_draw_region(
+    img: np.ndarray, label: np.ndarray, foreground: np.ndarray
+) -> Tuple[int]:
     h, w = img.shape[:2]
     h_fg, w_fg = foreground.shape[:2]
     label_pixel = np.copy(label)

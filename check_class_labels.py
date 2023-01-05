@@ -91,11 +91,7 @@ if __name__ == "__main__":
         labels = val[0][:, 0].astype(np.uint8).flatten().tolist()
         labels_list += labels
 
-        if (30 in labels or
-            31 in labels or
-            35 in labels or
-            39 in labels or
-            43 in labels):
+        if 30 in labels or 31 in labels or 35 in labels or 39 in labels or 43 in labels:
             print(key)
 
     labels_list = np.array(labels_list)

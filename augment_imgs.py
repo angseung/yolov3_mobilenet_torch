@@ -2,7 +2,14 @@ import os
 import random
 import numpy as np
 import cv2
-from utils.augment_utils import parse_label, label_yolo2voc, label_voc2yolo, find_draw_region, write_label, draw_bbox_on_img
+from utils.augment_utils import (
+    parse_label,
+    label_yolo2voc,
+    label_voc2yolo,
+    find_draw_region,
+    write_label,
+    draw_bbox_on_img,
+)
 
 
 if __name__ == "__main__":
@@ -25,11 +32,13 @@ if __name__ == "__main__":
         fg_label = parse_label("Z03ah4432X.txt")
         fg_h, fg_w = fg_img.shape[:2]
 
-        selected_region, area_xtl, area_ytl, area_xbr, area_ybr = find_draw_region(bg_img, bg_label, fg_img)
+        selected_region, area_xtl, area_ytl, area_xbr, area_ybr = find_draw_region(
+            bg_img, bg_label, fg_img
+        )
         assert area_xbr > area_xtl and area_ybr > area_ytl
 
-        allowed_width = (area_xbr - area_xtl - fg_w)
-        allowed_height = (area_ybr - area_ytl - fg_h)
+        allowed_width = area_xbr - area_xtl - fg_w
+        allowed_height = area_ybr - area_ytl - fg_h
 
         draw_xtl = random.randint(0, allowed_width - 1)
         draw_ytl = random.randint(0, allowed_height - 1)
@@ -41,7 +50,9 @@ if __name__ == "__main__":
 
         # draw fg_img on bg_img
         try:
-            bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = fg_img[:, :, :]
+            bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = fg_img[
+                :, :, :
+            ]
         except:
             a = 1
 

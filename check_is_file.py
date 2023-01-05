@@ -38,8 +38,14 @@ for fname in f_list:
     if not os.path.isdir("/data_yper/yperv1/images/deleted"):
         os.makedirs("/data_yper/yperv1/images/deleted")
 
-    shutil.move(f"/data_yper/yperv1/images/train/{fname}.jpg", f"/data_yper/yperv1/images/deleted/{fname}.jpg")
-    shutil.move(f"/data_yper/yperv1/labels/train/{fname}.txt", f"/data_yper/yperv1/labels/deleted/{fname}.txt")
+    shutil.move(
+        f"/data_yper/yperv1/images/train/{fname}.jpg",
+        f"/data_yper/yperv1/images/deleted/{fname}.jpg",
+    )
+    shutil.move(
+        f"/data_yper/yperv1/labels/train/{fname}.txt",
+        f"/data_yper/yperv1/labels/deleted/{fname}.txt",
+    )
 #
 # with open("validation_list.txt", "r") as f:
 #     validation_list = f.readlines()
