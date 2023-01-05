@@ -1,5 +1,6 @@
 import os
-from typing import Tuple
+from typing import Tuple, Union
+from PIL import Image, ImageDraw
 import numpy as np
 
 
@@ -59,7 +60,7 @@ def label_voc2yolo(label_voc: np.ndarray, h: int, w: int) -> np.ndarray:
 
 def find_draw_region(img: np.ndarray, label: np.ndarray, foreground: np.ndarray) -> Tuple[int]:
     h, w = img.shape[:2]
-    w_fg, h_fg = foreground.shape[:2]
+    h_fg, w_fg = foreground.shape[:2]
     label_pixel = np.copy(label)
     label_pixel[:, [1, 3]] *= w
     label_pixel[:, [2, 4]] *= h
@@ -128,21 +129,21 @@ def find_draw_region(img: np.ndarray, label: np.ndarray, foreground: np.ndarray)
     selected_region = (region_candidate * region_area).argmax() + 1
 
     if selected_region == 1:
-        area = (selected_region, 0, 0, xtl, ytl)
+        area = (selected_region, 0, 0, xtl.item(), ytl.item())
     elif selected_region == 2:
-        area = (selected_region, xtl, 0, xbr, ytl)
+        area = (selected_region, xtl.item(), 0, xbr.item(), ytl.item())
     elif selected_region == 3:
-        area = (selected_region, xbr, 0, w, ytl)
+        area = (selected_region, xbr.item(), 0, w, ytl.item())
     elif selected_region == 4:
-        area = (selected_region, 0, ytl, xtl, ybr)
+        area = (selected_region, 0, ytl.item(), xtl.item(), ybr.item())
     elif selected_region == 5:
-        area = (selected_region, xbr, ytl, w, ybr)
+        area = (selected_region, xbr.item(), ytl.item(), w, ybr.item())
     elif selected_region == 6:
-        area = (selected_region, 0, ybr, xtl, h)
+        area = (selected_region, 0, ybr.item(), xtl.item(), h)
     elif selected_region == 7:
-        area = (selected_region, xtl, ybr, xbr, h)
+        area = (selected_region, xtl.item(), ybr.item(), xbr.item(), h)
     elif selected_region == 8:
-        area = (selected_region, xbr, ybr, w, h)
+        area = (selected_region, xbr.item(), ybr.item(), w, h)
 
     return area
 
@@ -156,3 +157,17 @@ def write_label(target_dir: str, fname: str, bboxes: np.ndarray) -> None:
             f.write(f"{target_str}\n")
 
 
+def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str]) -> np.ndarray:
+    if isinstance(label, str):
+        label = parse_label(label)
+
+    label = label_yolo2voc(label, *(img.shape[:2]))
+
+    img = Image.fromarray(img)
+    draw = ImageDraw.Draw(img)
+
+    for i in range(label.shape[0]):
+        pos = tuple(label[i][1:].tolist())
+        draw.rectangle(pos, outline=(0, 0, 0), width=3)
+
+    return np.asarray(img)
