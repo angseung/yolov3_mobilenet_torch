@@ -2,6 +2,7 @@ from typing import Tuple, Union
 import random
 from PIL import Image, ImageDraw
 import numpy as np
+import cv2
 
 
 def parse_label(fname: str) -> np.ndarray:
@@ -206,3 +207,34 @@ def augment_img(
     label = np.concatenate((fg_label_yolo, bg_label), axis=0)
 
     return bg_img, label
+
+
+def random_resize(
+    img: np.ndarray, label: Union[np.ndarray, None] = None
+) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    scaled = random.uniform(1.0, 4.0)
+    h, w = img.shape[:2]
+
+    if h > w:
+        ratio = h / w
+        w_scaled = w * scaled
+        h_scaled = w_scaled * ratio
+
+    else:
+        ratio = w / h
+        h_scaled = h * scaled
+        w_scaled = h_scaled * ratio
+
+    size = int(w_scaled), int(h_scaled)
+
+    if label is not None:
+        label[:, 1:] *= scaled
+
+        return cv2.resize(img, size, interpolation=cv2.INTER_AREA), label
+
+    return cv2.resize(img, size, interpolation=cv2.INTER_AREA)
+
+
+if __name__ == "__main__":
+    a = np.zeros((155, 325, 3))
+    b = random_resize(a)
