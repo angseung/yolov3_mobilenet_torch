@@ -1,5 +1,5 @@
-import os
 from typing import Tuple, Union
+import random
 from PIL import Image, ImageDraw
 import numpy as np
 
@@ -60,7 +60,7 @@ def label_voc2yolo(label_voc: np.ndarray, h: int, w: int) -> np.ndarray:
 
 def find_draw_region(
     img: np.ndarray, label: np.ndarray, foreground: np.ndarray
-) -> Tuple[int]:
+) -> Tuple[int, int, int, int, int]:
     h, w = img.shape[:2]
     h_fg, w_fg = foreground.shape[:2]
     label_pixel = np.copy(label)
@@ -173,3 +173,36 @@ def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str]) -> np.ndarr
         draw.rectangle(pos, outline=(0, 0, 0), width=3)
 
     return np.asarray(img)
+
+
+def augment_img(
+    fg_img: np.ndarray, fg_label: np.ndarray, bg_img: np.ndarray, bg_label: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    bg_h, bg_w = bg_img.shape[:2]
+    fg_h, fg_w = fg_img.shape[:2]
+
+    selected_region, area_xtl, area_ytl, area_xbr, area_ybr = find_draw_region(
+        bg_img, bg_label, fg_img
+    )
+    assert area_xbr > area_xtl and area_ybr > area_ytl
+
+    allowed_width = area_xbr - area_xtl - fg_w
+    allowed_height = area_ybr - area_ytl - fg_h
+
+    draw_xtl = random.randint(0, allowed_width - 1)
+    draw_ytl = random.randint(0, allowed_height - 1)
+
+    abs_xtl, abs_ytl = draw_xtl + area_xtl, draw_ytl + area_ytl
+
+    # draw fg_img on bg_img
+    bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = fg_img
+
+    # compensate bbox offset of fg_label
+    fg_label_voc = label_yolo2voc(fg_label, fg_h, fg_w)
+    fg_label_voc[:, [1, 3]] += abs_xtl
+    fg_label_voc[:, [2, 4]] += abs_ytl
+    fg_label_yolo = label_voc2yolo(fg_label_voc, bg_h, bg_w)
+
+    label = np.concatenate((fg_label_yolo, bg_label), axis=0)
+
+    return bg_img, label
