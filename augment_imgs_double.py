@@ -1,6 +1,6 @@
 import os
 import random
-
+import platform
 import cv2
 from utils.augment_utils import (
     parse_label,
@@ -13,11 +13,20 @@ from utils.augment_utils import (
 random.seed(123)
 
 if __name__ == "__main__":
-    bg_img_dir = "./data/yperv1/images/train"
-    bg_label_dir = "./data/yperv1/labels/train"
-    fg_img_dir = "./data/addons/images/train"
-    fg_label_dir = "./data/addons/labels/train"
-    target_dir = "./data/yperv2"
+
+    if "Windows" in platform.platform():
+        bg_img_dir = "./data/yperv1/images/train"
+        bg_label_dir = "./data/yperv1/labels/train"
+        fg_img_dir = "./data/addons/images/train"
+        fg_label_dir = "./data/addons/labels/train"
+        target_dir = "./data/yperv2"
+
+    elif "Linux" in platform.platform():
+        bg_img_dir = "/data_yper/yperv1/images/train"
+        bg_label_dir = "/data_yper/yperv1/labels/train"
+        fg_img_dir = "/data_yper/addons/images/train"
+        fg_label_dir = "/data_yper/addons/labels/train"
+        target_dir = "/data_yper/yperv2"
 
     if not os.path.isdir(target_dir):
         os.makedirs(f"{target_dir}/images/train", exist_ok=True)
