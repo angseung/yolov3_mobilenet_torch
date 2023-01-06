@@ -129,7 +129,11 @@ def find_draw_region(
     region_candidate = np.array(region_candidate, dtype=np.uint32)
     region_area = np.array(region_area, dtype=np.uint32)
 
-    selected_region = (region_candidate * region_area).argmax() + 1
+    # no selected region
+    if (region_candidate * region_area).sum() < 0.5:
+        selected_region = 0
+    else:
+        selected_region = (region_candidate * region_area).argmax() + 1
 
     if selected_region == 1:
         area = (selected_region, 0, 0, xtl.item(), ytl.item())
@@ -147,6 +151,8 @@ def find_draw_region(
         area = (selected_region, xtl.item(), ybr.item(), xbr.item(), h)
     elif selected_region == 8:
         area = (selected_region, xbr.item(), ybr.item(), w, h)
+    elif selected_region == 0:
+        area = (selected_region, 0, 0, 0, 0)
 
     return area
 
@@ -186,6 +192,9 @@ def augment_img(
         bg_img, bg_label, fg_img
     )
     assert area_xbr > area_xtl and area_ybr > area_ytl
+
+    if selected_region == 0:
+        return bg_img, fg_label
 
     allowed_width = area_xbr - area_xtl - fg_w
     allowed_height = area_ybr - area_ytl - fg_h
