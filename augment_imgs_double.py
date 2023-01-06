@@ -44,7 +44,10 @@ if __name__ == "__main__":
     processed = 0
     remainder = len(fg_img_list) - len(bg_img_list)
 
-    fg_img_list, fg_img_list_remainder = fg_img_list[:len(bg_img_list)], fg_img_list[len(bg_img_list):]
+    fg_img_list, fg_img_list_remainder = (
+        fg_img_list[: len(bg_img_list)],
+        fg_img_list[len(bg_img_list) :],
+    )
 
     for i, (bg_file_name, fg_file_name) in enumerate(zip(bg_img_list, fg_img_list)):
         print(f"processing {i}/{len(bg_img_list)}th sample, {bg_file_name}")
@@ -84,7 +87,7 @@ if __name__ == "__main__":
             remainder -= is_done
 
         # draw bbox for debug
-        new_img = draw_bbox_on_img(new_img, new_label)
+        # new_img = draw_bbox_on_img(new_img, new_label)
 
         # export augmented data
         cv2.imwrite(f"{target_dir}/images/train/{bg_file_name}.jpg", new_img)
