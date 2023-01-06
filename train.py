@@ -683,7 +683,7 @@ def parse_opt(known=False):
         help="model.yaml path",
     )
     parser.add_argument(
-        "--data", type=str, default=ROOT / "data/yperv1.yaml", help="dataset.yaml path"
+        "--data", type=str, default=ROOT / "data/yperv2.yaml", help="dataset.yaml path"
     )
     parser.add_argument(
         "--hyp",
@@ -701,7 +701,7 @@ def parse_opt(known=False):
     parser.add_argument(
         "--imgsz",
         type=int,
-        default=320,
+        default=640,
         help="train, val image size (pixels)",
     )
     parser.add_argument(
