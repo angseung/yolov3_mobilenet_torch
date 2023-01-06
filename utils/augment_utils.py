@@ -184,23 +184,25 @@ def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str]) -> np.ndarr
 
 def augment_img(
     fg_img: np.ndarray, fg_label: np.ndarray, bg_img: np.ndarray, bg_label: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, bool]:
     bg_h, bg_w = bg_img.shape[:2]
     fg_h, fg_w = fg_img.shape[:2]
 
     selected_region, area_xtl, area_ytl, area_xbr, area_ybr = find_draw_region(
         bg_img, bg_label, fg_img
     )
-    assert area_xbr > area_xtl and area_ybr > area_ytl
-
-    if selected_region == 0:
-        return bg_img, fg_label
+    if not (area_xbr > area_xtl and area_ybr > area_ytl):
+        return bg_img, bg_label, False
 
     allowed_width = area_xbr - area_xtl - fg_w
     allowed_height = area_ybr - area_ytl - fg_h
 
-    draw_xtl = random.randint(0, allowed_width - 1)
-    draw_ytl = random.randint(0, allowed_height - 1)
+    try:
+        draw_xtl = random.randint(0, allowed_width - 1)
+        draw_ytl = random.randint(0, allowed_height - 1)
+
+    except:
+        return bg_img, bg_label, False
 
     abs_xtl, abs_ytl = draw_xtl + area_xtl, draw_ytl + area_ytl
 
@@ -215,7 +217,7 @@ def augment_img(
 
     label = np.concatenate((fg_label_yolo, bg_label), axis=0)
 
-    return bg_img, label
+    return bg_img, label, True
 
 
 def random_resize(

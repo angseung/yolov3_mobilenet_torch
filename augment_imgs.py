@@ -1,4 +1,5 @@
 import os
+import random
 import cv2
 from utils.augment_utils import (
     parse_label,
@@ -27,6 +28,8 @@ if __name__ == "__main__":
         bg_img_list = os.listdir(bg_img_dir)
 
     fg_img_list = os.listdir(fg_img_dir)
+    random.shuffle(bg_img_list)
+    random.shuffle(fg_img_list)
 
     for i, (bg_file_name, fg_file_name) in enumerate(zip(bg_img_list, fg_img_list)):
         print(f"processing {i}/{len(bg_img_list)}th sample, {bg_file_name}")
@@ -44,7 +47,7 @@ if __name__ == "__main__":
         # random resize fg img
         fg_img, fg_label = random_resize(img=fg_img, label=fg_label)
 
-        new_img, new_label = augment_img(
+        new_img, new_label, is_processed = augment_img(
             fg_img=fg_img, fg_label=fg_label, bg_img=bg_img, bg_label=bg_label
         )
 
