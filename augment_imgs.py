@@ -9,6 +9,7 @@ from utils.augment_utils import (
     random_resize,
 )
 
+random.seed(123)
 
 if __name__ == "__main__":
     bg_img_dir = "./data/yperv1/images/train"
