@@ -17,8 +17,8 @@ if __name__ == "__main__":
     target_dir = "./data/yperv2"
 
     if not os.path.isdir(target_dir):
-        os.makedirs(f"{target_dir}/images/train")
-        os.makedirs(f"{target_dir}/labels/train")
+        os.makedirs(f"{target_dir}/images/train", exist_ok=True)
+        os.makedirs(f"{target_dir}/labels/train", exist_ok=True)
 
     if os.path.isfile("img_list.txt"):
         with open("img_list.txt", encoding="utf-8") as f:
@@ -28,11 +28,11 @@ if __name__ == "__main__":
 
     fg_img_list = os.listdir(fg_img_dir)
 
-    for i, (bg_file_name, fg_file_name) in enumerate(zip(bg_img_list, fg_img_dir)):
+    for i, (bg_file_name, fg_file_name) in enumerate(zip(bg_img_list, fg_img_list)):
         print(f"processing {i}/{len(bg_img_list)}th sample, {bg_file_name}")
 
         # remove suffix and new line
-        bg_file_name = bg_file_name[:-4]
+        bg_file_name = bg_file_name[:-1]
         fg_file_name = fg_file_name[:-4]
 
         bg_img = cv2.imread(f"{bg_img_dir}/{bg_file_name}.jpg")
@@ -42,7 +42,7 @@ if __name__ == "__main__":
         fg_label = parse_label(f"{fg_label_dir}/{fg_file_name}.txt")
 
         # random resize fg img
-        fg_img, fg_label - random_resize(img=fg_img, label=fg_label)
+        fg_img, fg_label = random_resize(img=fg_img, label=fg_label)
 
         new_img, new_label = augment_img(
             fg_img=fg_img, fg_label=fg_label, bg_img=bg_img, bg_label=bg_label

@@ -212,7 +212,7 @@ def augment_img(
 def random_resize(
     img: np.ndarray, label: Union[np.ndarray, None] = None
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
-    scaled = random.uniform(1.0, 4.0)
+    scaled = random.uniform(0.75, 4.0)
     h, w = img.shape[:2]
 
     if h > w:
@@ -228,7 +228,9 @@ def random_resize(
     size = int(w_scaled), int(h_scaled)
 
     if label is not None:
+        label = label_yolo2voc(label, h, w).astype(np.float64)
         label[:, 1:] *= scaled
+        label = label_voc2yolo(label, h_scaled, w_scaled)
 
         return cv2.resize(img, size, interpolation=cv2.INTER_AREA), label
 
