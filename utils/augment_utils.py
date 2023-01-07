@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 import random
 from PIL import Image, ImageDraw
 import numpy as np
@@ -221,7 +221,7 @@ def augment_img(
 
 
 def random_resize(
-    img: np.ndarray, label: Union[np.ndarray, None] = None
+    img: np.ndarray, label: Optional[np.ndarray, None] = None
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     scaled = random.uniform(0.75, 2.5)
     h, w = img.shape[:2]
