@@ -1,6 +1,6 @@
-from typing import List, Union
+from typing import List, Dict, Union
 
-class_labels = [
+class_labels: List[str] = [
     "0",
     "1",
     "2",
@@ -51,28 +51,128 @@ class_labels = [
     "하",
     "허",
     "호",
-    "울",  # 서울
-    "경",
-    "기",
-    "인",
-    "천",
-    "대",
-    "전",
-    "세",
-    "종",
-    "충",
-    "남",
-    "북",
-    "강",
-    "원",
-    # 경남, 경북
-    "산",  # 부산
-    # 울산
-    # 대구
-    # 전남, 전북
-    "광",  # 광주
-    "제",  # 제주
+    "서울w",
+    "서울h",
+    "경기w",
+    "경기h",
+    "인천w",
+    "인천h",
+    "대전w",
+    "대전h",
+    "세종w",
+    "세종h",
+    "충남w",
+    "충남h",
+    "충북w",
+    "충북h",
+    "강원w",
+    "강원h",
+    "경남w",
+    "경남h",
+    "경북w",
+    "경북h",
+    "부산w",
+    "부산h",
+    "울산w",
+    "울산h",
+    "대구w",
+    "대구h",
+    "전남w",
+    "전남h",
+    "전북w",
+    "전북h",
+    "광주w",
+    "광주h",
+    "제주w",
+    "제주h",
 ]
+
+class_dict: Dict[Union[str, int], int] = {
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6,
+    "7": 7,
+    "8": 8,
+    "9": 9,
+    "rk": 10,
+    "rj": 11,
+    "rh": 12,
+    "rn": 13,
+    "sk": 14,
+    "sj": 15,
+    "sh": 16,
+    "sn": 17,
+    "ek": 18,
+    "ej": 19,
+    "eh": 20,
+    "en": 21,
+    "fk": 22,
+    "fj": 23,
+    "fh": 24,
+    "fn": 25,
+    "ak": 26,
+    "aj": 27,
+    "ah": 28,
+    "an": 29,
+    "qk": 30,
+    "qo": 31,
+    "qj": 32,
+    "qh": 33,
+    "qn": 34,
+    "tk": 35,
+    "tj": 36,
+    "th": 37,
+    "tn": 38,
+    "dk": 39,
+    "dj": 40,
+    "dh": 41,
+    "dn": 42,
+    "wk": 43,
+    "wj": 44,
+    "wh": 45,
+    "wn": 46,
+    "gk": 47,
+    "gj": 48,
+    "gh": 49,
+    "A": 50,
+    "A_v": 51,
+    "B": 52,
+    "B_v": 53,
+    "C": 54,
+    "C_v": 55,
+    "F": 56,
+    "F_v": 57,
+    "Q": 58,
+    "Q_v": 59,
+    "E": 60,
+    "E_v": 61,
+    "G": 62,
+    "G_v": 63,
+    "D": 64,
+    "D_v": 65,
+    "L": 66,
+    "L_v": 67,
+    "K": 68,
+    "K_v": 69,
+    "H": 70,
+    "H_v": 71,
+    "I": 72,
+    "I_v": 73,
+    "J": 74,
+    "J_v": 75,
+    "M": 76,
+    "M_v": 77,
+    "O": 78,
+    "O_v": 79,
+    "N": 80,
+    "N_v": 81,
+    "P": 82,
+    "P_v": 83,
+}
 
 
 def map_class_index_to_target(classes: List[str]) -> Union[List[str], None]:
@@ -83,3 +183,12 @@ def map_class_index_to_target(classes: List[str]) -> Union[List[str], None]:
         return classes
     else:
         return None
+
+
+def validate_labels(classes_list: List[str], classes_dict: Dict[str, int]) -> None:
+    for key, val in classes_dict.items():
+        print(f"{key} : {classes_list[val]}")
+
+
+if __name__ == "__main__":
+    validate_labels(class_labels, class_dict)

@@ -113,7 +113,7 @@ def run(
     transform_to_gray = to_grayscale(num_output_channels=3)
 
     # Mapping class index to real value for yper data
-    if len(names) == 67:
+    if len(names) == 84:
         class_labels = map_class_index_to_target(names)
         if class_labels:
             model.names = class_labels

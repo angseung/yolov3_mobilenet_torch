@@ -251,3 +251,6 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 .idea
+*.txt
+*.tar.gz
+*.whl

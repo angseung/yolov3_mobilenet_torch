@@ -1,7 +1,8 @@
-import os
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
+import random
 from PIL import Image, ImageDraw
 import numpy as np
+import cv2
 
 
 def parse_label(fname: str) -> np.ndarray:
@@ -60,7 +61,7 @@ def label_voc2yolo(label_voc: np.ndarray, h: int, w: int) -> np.ndarray:
 
 def find_draw_region(
     img: np.ndarray, label: np.ndarray, foreground: np.ndarray
-) -> Tuple[int]:
+) -> Tuple[int, int, int, int, int]:
     h, w = img.shape[:2]
     h_fg, w_fg = foreground.shape[:2]
     label_pixel = np.copy(label)
@@ -128,7 +129,11 @@ def find_draw_region(
     region_candidate = np.array(region_candidate, dtype=np.uint32)
     region_area = np.array(region_area, dtype=np.uint32)
 
-    selected_region = (region_candidate * region_area).argmax() + 1
+    # no selected region
+    if (region_candidate * region_area).sum() < 0.5:
+        selected_region = 0
+    else:
+        selected_region = (region_candidate * region_area).argmax() + 1
 
     if selected_region == 1:
         area = (selected_region, 0, 0, xtl.item(), ytl.item())
@@ -146,6 +151,8 @@ def find_draw_region(
         area = (selected_region, xtl.item(), ybr.item(), xbr.item(), h)
     elif selected_region == 8:
         area = (selected_region, xbr.item(), ybr.item(), w, h)
+    elif selected_region == 0:
+        area = (selected_region, 0, 0, 0, 0)
 
     return area
 
@@ -173,3 +180,74 @@ def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str]) -> np.ndarr
         draw.rectangle(pos, outline=(0, 0, 0), width=3)
 
     return np.asarray(img)
+
+
+def augment_img(
+    fg_img: np.ndarray, fg_label: np.ndarray, bg_img: np.ndarray, bg_label: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, bool]:
+    bg_h, bg_w = bg_img.shape[:2]
+    fg_h, fg_w = fg_img.shape[:2]
+
+    selected_region, area_xtl, area_ytl, area_xbr, area_ybr = find_draw_region(
+        bg_img, bg_label, fg_img
+    )
+    if not (area_xbr > area_xtl and area_ybr > area_ytl):
+        return bg_img, bg_label, False
+
+    allowed_width = area_xbr - area_xtl - fg_w
+    allowed_height = area_ybr - area_ytl - fg_h
+
+    try:
+        draw_xtl = random.randint(0, allowed_width - 1)
+        draw_ytl = random.randint(0, allowed_height - 1)
+
+    except:
+        return bg_img, bg_label, False
+
+    abs_xtl, abs_ytl = draw_xtl + area_xtl, draw_ytl + area_ytl
+
+    # draw fg_img on bg_img
+    bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = fg_img
+
+    # compensate bbox offset of fg_label
+    fg_label_voc = label_yolo2voc(fg_label, fg_h, fg_w)
+    fg_label_voc[:, [1, 3]] += abs_xtl
+    fg_label_voc[:, [2, 4]] += abs_ytl
+    fg_label_yolo = label_voc2yolo(fg_label_voc, bg_h, bg_w)
+
+    label = np.concatenate((fg_label_yolo, bg_label), axis=0)
+
+    return bg_img, label, True
+
+
+def random_resize(
+    img: np.ndarray, label: Optional[np.ndarray, None] = None
+) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    scaled = random.uniform(0.75, 2.5)
+    h, w = img.shape[:2]
+
+    if h > w:
+        ratio = h / w
+        w_scaled = w * scaled
+        h_scaled = w_scaled * ratio
+
+    else:
+        ratio = w / h
+        h_scaled = h * scaled
+        w_scaled = h_scaled * ratio
+
+    size = int(w_scaled), int(h_scaled)
+
+    if label is not None:
+        label = label_yolo2voc(label, h, w).astype(np.float64)
+        label[:, 1:] *= scaled
+        label = label_voc2yolo(label, h_scaled, w_scaled)
+
+        return cv2.resize(img, size, interpolation=cv2.INTER_AREA), label
+
+    return cv2.resize(img, size, interpolation=cv2.INTER_AREA)
+
+
+if __name__ == "__main__":
+    a = np.zeros((155, 325, 3))
+    b = random_resize(a)
