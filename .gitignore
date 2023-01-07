@@ -253,3 +253,4 @@ fabric.properties
 .idea
 *.txt
 *.tar.gz
+*.whl
