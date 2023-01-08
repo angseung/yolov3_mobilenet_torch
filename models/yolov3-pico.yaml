@@ -1,0 +1,51 @@
+# YOLOv3 by Ultralytics, GPL-3.0 license
+
+# Parameters
+nc: 67  # number of classes
+depth_multiple: 1.0  # model depth multiple
+width_multiple: 1.0  # layer channel multiple
+anchors:
+  - [10,13, 16,30, 33,23]  # P3/8
+  - [30,61, 62,45, 59,119]  # P4/16
+  - [116,90, 156,198, 373,326]  # P5/32
+
+# mobilenetv1 backbone
+backbone:
+  # [from, number, module, args]                                      output_shape
+  [[-1, 1, Conv, [32, 3, 1]],  # 0                                    (None, 32, 320, 320)
+   [-1, 1, DWSConv, [32, 64, 3, 2]],  # 1-P1/2                        (None, 64, 160, 160)
+   [-1, 1, DWSBottleneck, [64]],#                                     (None, 64, 160, 160)
+   [-1, 1, DWSConv, [64, 128, 3, 2]],  # 3-P2/4                              (None, 128, 80, 80)
+   [-1, 2, DWSBottleneck, [128]],#                                    (None, 128, 80, 80)
+   [-1, 1, DWSConv, [128, 256, 3, 2]],  # 5-P3/8                              (None, 256, 40, 40)
+   [-1, 8, DWSBottleneck, [256]],#                                    (None, 256, 40, 40)
+   [-1, 1, DWSConv, [256, 512, 3, 2]],  # 7-P4/16                             (None, 512, 20, 20)
+   [-1, 8, DWSBottleneck, [512]],#                                    (None, 512, 20, 20)
+   [-1, 1, DWSConv, [512, 1024, 3, 2]],  # 9-P5/32                            (None, 1024, 10, 10)
+   [-1, 4, DWSBottleneck, [1024]],  # 10                              (None, 1024, 10, 10)
+  ]
+
+# YOLOv3 head
+head:
+  [[-1, 1, DWSBottleneck, [1024, False]],#                            (None, 1024, 10, 10)
+   [-1, 1, Conv, [512, 1, 1]],#                                       (None, 512, 10, 10)
+   [-1, 1, Conv, [1024, 3, 1]],#                                      (None, 1024, 10, 10)
+   [-1, 1, Conv, [512, 1, 1]],#                                       (None, 512, 10, 10)
+   [-1, 1, Conv, [1024, 3, 1]],  # 15 (P5/32-large)                   (None, 1024, 10, 10)
+
+   [-2, 1, Conv, [256, 1, 1]],#                                       (None, 256, 10, 10)
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#                       (None, 256, 20, 20)
+   [[-1, 8], 1, Concat, [1]],  # cat backbone P4 (7-P4/16)            (None, 768, 20, 20)
+   [-1, 1, DWSBottleneck, [512, False]],#                             (None, 512, 20, 20)
+   [-1, 1, DWSBottleneck, [512, False]],#                             (None, 512, 20, 20)
+   [-1, 1, Conv, [256, 1, 1]],#                                       (None, 256, 20, 20)
+   [-1, 1, Conv, [512, 3, 1]],  # 22 (P4/16-medium)                   (None, 512, 20, 20)
+
+   [-2, 1, Conv, [128, 1, 1]],#                                       (None, 128, 20, 20)
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#                       (None, 128, 40, 40)
+   [[-1, 6], 1, Concat, [1]],  # cat backbone P3 (5-P3/8)             (None, 384, 40, 40)
+   [-1, 1, DWSBottleneck, [256, False]],#                             (None, 256, 40, 40)
+   [-1, 2, DWSBottleneck, [256, False]],  # 27 (P3/8-small)           (None, 256, 40, 40)
+
+   [[27, 22, 15], 1, Detect, [nc, anchors]],   # Detect(P3, P4, P5)   (None, 6300, 67)
+  ]
