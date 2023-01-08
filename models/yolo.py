@@ -378,12 +378,9 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         else:
             c2 = ch[f]
 
-        # x_temp = torch.randn((1, 3, 320, 320))
         m_ = (
             nn.Sequential(*(m(*args) for _ in range(n))) if n > 1 else m(*args)
         )  # module
-        # debug...
-        # x_temp = m_(x_temp)
 
         t = str(m)[8:-2].replace("__main__.", "")  # module type
         np = sum(x.numel() for x in m_.parameters())  # number params
@@ -401,7 +398,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         )  # append to savelist
         layers.append(m_)
         if i == 0:
-            ch = []
+            ch = []  # a list to save a dimension output channels of the previous layer
         ch.append(c2)
     return nn.Sequential(*layers), sorted(save)
 
