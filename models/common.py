@@ -69,11 +69,7 @@ class Conv(nn.Module):
         )
 
     def forward(self, x):
-        x = self.conv(x)
-        x = self.bn(x)
-        x = self.act(x)
-        return x
-        # return self.act(self.bn(self.conv(x)))
+        return self.act(self.bn(self.conv(x)))
 
     def forward_fuse(self, x):
         return self.act(self.conv(x))
