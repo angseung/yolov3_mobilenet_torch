@@ -6,6 +6,14 @@ import cv2
 
 
 def parse_label(fname: str) -> np.ndarray:
+    """
+    parses the label file, then converts it to np.ndarray type
+    Args:
+        fname: label file name
+
+    Returns: label as np.ndarray
+
+    """
     with open(fname, encoding="utf-8") as f:
         bboxes = f.readlines()
         label = []
@@ -17,8 +25,16 @@ def parse_label(fname: str) -> np.ndarray:
 
 
 def label_yolo2voc(label_yolo: np.ndarray, h: int, w: int) -> np.ndarray:
-    # from: (x_center, y_center, w, h), normalized
-    # to:   (xtl, ytl, xbr, ybr)
+    """
+    converts label format from yolo to voc
+    Args:
+        label_yolo: (x_center, y_center, w, h), normalized
+        h: img height
+        w: img width
+
+    Returns: (xtl, ytl, xbr, ybr)
+
+    """
     label_voc = np.zeros(label_yolo.shape, dtype=np.float64)
     label_voc[:, 0] = label_yolo[:, 0]
 
@@ -38,9 +54,16 @@ def label_yolo2voc(label_yolo: np.ndarray, h: int, w: int) -> np.ndarray:
 
 
 def label_voc2yolo(label_voc: np.ndarray, h: int, w: int) -> np.ndarray:
-    # from: (xtl, ytl, xbr, ybr)
-    # to:   (x_center, y_center, w, h), normalized
+    """
+    converts label format from voc to yolo
+    Args:
+        label_voc: (xtl, ytl, xbr, ybr)
+        h: img heights
+        w: img width
 
+    Returns: (x_center, y_center, w, h), normalized
+
+    """
     label_yolo = np.zeros(label_voc.shape, dtype=np.float64)
     label_yolo[:, 0] = label_voc[:, 0]
 
@@ -63,7 +86,7 @@ def find_draw_region(
     img: np.ndarray, label: np.ndarray, foreground: np.ndarray
 ) -> Tuple[int, int, int, int, int]:
     """
-
+    find region for drawing foreground images
     Args:
         img: background image
         label: annotation label of img
@@ -169,7 +192,7 @@ def find_draw_region(
 
 def write_label(target_dir: str, fname: str, bboxes: np.ndarray) -> None:
     """
-
+    exports np.ndarray label to txt file
     Args:
         target_dir: save dir for label file
         fname: file name of label
