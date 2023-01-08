@@ -78,10 +78,10 @@ class Conv(nn.Module):
 class DWConv(Conv):
     # Depth-wise convolution class
     def __init__(
-        self, c1, c2, k=1, s=1, act=True
+        self, c1, c2, k=1, s=1, p=1, act=True
     ):  # ch_in, ch_out, kernel, stride, padding, groups
         # groups : greatest common divisor...
-        super().__init__(c1, c2, k, s, g=math.gcd(c1, c2), act=act)
+        super().__init__(c1, c2, k, s, p, g=math.gcd(c1, c2), act=act)
 
 
 class DWSConv(nn.Module):
@@ -905,3 +905,9 @@ class Classify(nn.Module):
             [self.aap(y) for y in (x if isinstance(x, list) else [x])], 1
         )  # cat if list
         return self.flat(self.conv(z))  # flatten to x(b,c2)
+
+
+if __name__ == "__main__":
+    a = torch.randn((1, 3, 960, 960))
+    b = DWConv(3, 32, k=3, s=2, p=1, act=True)
+    c = b(a)
