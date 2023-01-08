@@ -62,6 +62,16 @@ def label_voc2yolo(label_voc: np.ndarray, h: int, w: int) -> np.ndarray:
 def find_draw_region(
     img: np.ndarray, label: np.ndarray, foreground: np.ndarray
 ) -> Tuple[int, int, int, int, int]:
+    """
+
+    Args:
+        img: background image
+        label: annotation label of img
+        foreground: foreground image to be appended on background image
+
+    Returns: selected region to be appended
+
+    """
     h, w = img.shape[:2]
     h_fg, w_fg = foreground.shape[:2]
     label_pixel = np.copy(label)
@@ -158,6 +168,16 @@ def find_draw_region(
 
 
 def write_label(target_dir: str, fname: str, bboxes: np.ndarray) -> None:
+    """
+
+    Args:
+        target_dir: save dir for label file
+        fname: file name of label
+        bboxes: annotation information, np.ndarray type
+
+    Returns: None
+
+    """
     num_boxes = bboxes.shape[0]
 
     with open(f"{target_dir}/{fname}.txt", "w") as f:
