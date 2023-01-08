@@ -69,7 +69,11 @@ class Conv(nn.Module):
         )
 
     def forward(self, x):
-        return self.act(self.bn(self.conv(x)))
+        x = self.conv(x)
+        x = self.bn(x)
+        x = self.act(x)
+        return x
+        # return self.act(self.bn(self.conv(x)))
 
     def forward_fuse(self, x):
         return self.act(self.conv(x))
@@ -85,11 +89,9 @@ class DWConv(Conv):
 
 
 class DWSConv(nn.Module):
-    def __init__(self, c1, c2, k=1, s=1, p="same", act=True):
+    def __init__(self, c1, c2, k=1, s=1, p=1, act=True):
         super().__init__()
-        # DWConv can be defined when stride is equal to 1.
-        assert s == 1
-        self.dconv = nn.Conv2d(c1, c1, k, s, padding=p, groups=c1, bias=False)
+        self.dconv = DWConv(c1, c1, k, s=s, p=p, act=act)
         self.bn_dw = nn.BatchNorm2d(c1)
         self.act_dw = (
             nn.SiLU()
@@ -99,7 +101,7 @@ class DWSConv(nn.Module):
         self.pconv = nn.Conv2d(
             in_channels=c1,
             out_channels=c2,
-            padding=p,
+            padding=0,
             kernel_size=1,
             stride=1,
             bias=False,
@@ -908,6 +910,9 @@ class Classify(nn.Module):
 
 
 if __name__ == "__main__":
-    a = torch.randn((1, 3, 960, 960))
-    b = DWConv(3, 32, k=3, s=2, p=1, act=True)
+    # a = torch.randn((1, 3, 960, 960))
+    # a = torch.randn((1, 3, 640, 640))
+    a = torch.randn((1, 3, 320, 320))
+    # b = DWConv(3, 32, k=3, s=2, p=1, act=True)
+    b = DWSConv(3, 32, k=3, s=2, p=1, act=True)
     c = b(a)
