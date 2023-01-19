@@ -17,6 +17,7 @@ from pathlib import Path
 import torch
 import torch.distributed as dist
 import torch.nn as nn
+from torch import Tensor
 import torch.nn.functional as F
 from torchvision.transforms import Normalize, Grayscale
 from utils.general import LOGGER
@@ -424,3 +425,20 @@ def normalizer(
 
 def to_grayscale(num_output_channels: int = 3) -> nn.Module:
     return transforms.Grayscale(num_output_channels=num_output_channels)
+
+
+def to_ycbcr(img_batch: Tensor) -> Tensor:
+
+    r = img_batch.clone()[:, 0, :, :]
+    g = img_batch.clone()[:, 1, :, :]
+    b = img_batch.clone()[:, 2, :, :]
+
+    y = 0.299 * r + 0.587 * g + 0.114 * b
+    cr = 0.713 * (r - y) + 0.5
+    cb = 0.564 * (b - y) + 0.5
+
+    img_batch[:, 0, :, :] = y
+    img_batch[:, 1, :, :] = cb
+    img_batch[:, 2, :, :] = cr
+
+    return img_batch
