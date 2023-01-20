@@ -186,7 +186,6 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         check_suffix(weights, ".pt")  # check weights
         pretrained = weights.endswith(".pt")
 
-    # TODO: operation test of fine-tuning part below...
     if pretrained:
         with torch_distributed_zero_first(LOCAL_RANK):
             weights = attempt_download(weights)  # download if not found locally

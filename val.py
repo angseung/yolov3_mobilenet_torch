@@ -135,7 +135,7 @@ def run(
     callbacks=Callbacks(),
     compute_loss=None,
     normalize=True,
-    gray=True,
+    gray=False,
 ):
     # Initialize/load model and set device
     training = model is not None
@@ -447,7 +447,7 @@ def run(
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data", type=str, default=ROOT / "data/coco128.yaml", help="dataset.yaml path"
+        "--data", type=str, default=ROOT / "data/yperv2.yaml", help="dataset.yaml path"
     )
     parser.add_argument(
         "--weights",
