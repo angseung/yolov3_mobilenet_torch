@@ -1,9 +1,9 @@
 import subprocess
 
 commands = [
+    'python train.py --weights "" --cfg yolov3-nano.yaml --data yperv2.yaml --normalize --imgsz 640 --setseed --seednum 123 --epochs 100 --batch-size 16 --adam --multi-scale',
     'python train.py --weights "" --cfg yolov3-nano.yaml --data yperv2.yaml --normalize --imgsz 960 --setseed --seednum 123 --epochs 100 --batch-size 16 --adam',
     'python train.py --weights "" --cfg yolov3-nano.yaml --data yperv2.yaml --normalize --imgsz 640 --setseed --seednum 123 --epochs 100 --batch-size 16 --adam',
-    'python train.py --weights "" --cfg yolov3-nano.yaml --data yperv2.yaml --normalize --imgsz 640 --setseed --seednum 123 --epochs 100 --batch-size 16 --adam --multi-scale',
 ]
 
 for command in commands:
