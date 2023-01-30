@@ -264,9 +264,12 @@ def augment_img(
 
 
 def random_resize(
-    img: np.ndarray, label: Optional[np.ndarray, None] = None
+    img: np.ndarray,
+    label: Optional[np.ndarray, None] = None,
+    scale_min: Union[int, float] = 0.75,
+    scale_max: Union[int, float] = 2.5,
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
-    scaled = random.uniform(0.75, 2.5)
+    scaled = random.uniform(scale_min, scale_max)
     h, w = img.shape[:2]
 
     if h > w:

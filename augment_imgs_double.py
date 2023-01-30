@@ -63,7 +63,7 @@ if __name__ == "__main__":
         fg_label = parse_label(f"{fg_label_dir}/{fg_file_name}.txt")
 
         # random resize fg img
-        fg_img, fg_label = random_resize(img=fg_img, label=fg_label)
+        fg_img, fg_label = random_resize(img=fg_img, label=fg_label, scale_min=0.75, scale_max=2.5)
 
         new_img, new_label, _ = augment_img(
             fg_img=fg_img, fg_label=fg_label, bg_img=bg_img, bg_label=bg_label
