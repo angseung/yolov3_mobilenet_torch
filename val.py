@@ -346,7 +346,7 @@ def run(
             callbacks.run("on_val_image_end", pred, predn, path, names, im[si])
 
         # Plot images
-        if plots and batch_i < 300:
+        if plots and batch_i < 5:
             f = save_dir / f"val_batch{batch_i}_labels.jpg"  # labels
             Thread(
                 target=plot_images, args=(im, targets, paths, f, names), daemon=True
