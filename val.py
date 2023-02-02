@@ -346,7 +346,7 @@ def run(
             callbacks.run("on_val_image_end", pred, predn, path, names, im[si])
 
         # Plot images
-        if plots and batch_i < 300:
+        if plots and batch_i < 5:
             f = save_dir / f"val_batch{batch_i}_labels.jpg"  # labels
             Thread(
                 target=plot_images, args=(im, targets, paths, f, names), daemon=True
@@ -464,6 +464,9 @@ def parse_opt():
         type=int,
         default=640,
         help="inference size (pixels)",
+    )
+    parser.add_argument(
+        "--normalize", action="store_true", help="apply normalize"
     )
     parser.add_argument(
         "--conf-thres", type=float, default=0.001, help="confidence threshold"
