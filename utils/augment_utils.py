@@ -1,5 +1,6 @@
 from typing import Tuple, Union, Optional
 import random
+from datetime import datetime
 from PIL import Image, ImageDraw
 import numpy as np
 import cv2
@@ -265,10 +266,11 @@ def augment_img(
 
 def random_resize(
     img: np.ndarray,
-    label: Optional[np.ndarray, None] = None,
+    label: Optional[Union[np.ndarray, None]] = None,
     scale_min: Union[int, float] = 0.75,
     scale_max: Union[int, float] = 2.5,
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    random.seed(datetime.now().timestamp())
     scaled = random.uniform(scale_min, scale_max)
     h, w = img.shape[:2]
 
