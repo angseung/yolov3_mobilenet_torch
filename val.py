@@ -465,9 +465,7 @@ def parse_opt():
         default=640,
         help="inference size (pixels)",
     )
-    parser.add_argument(
-        "--normalize", action="store_true", help="apply normalize"
-    )
+    parser.add_argument("--normalize", action="store_true", help="apply normalize")
     parser.add_argument(
         "--conf-thres", type=float, default=0.001, help="confidence threshold"
     )
