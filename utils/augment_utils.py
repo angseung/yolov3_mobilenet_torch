@@ -229,7 +229,7 @@ def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str]) -> np.ndarr
 def augment_img(
     fg_img: np.ndarray, fg_label: np.ndarray, bg_img: np.ndarray, bg_label: np.ndarray
 ) -> Tuple[np.ndarray, np.ndarray, bool]:
-    if len(fg_img.shape) == 4:
+    if fg_img.shape[2] == 4:
         mode = "blend"
     else:
         mode = "override"
@@ -261,7 +261,8 @@ def augment_img(
     if mode == "override":
         bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = fg_img
     elif mode == "blend":
-        bg_img = blend_argb_with_rgb(fg=fg_img, bg=bg_img, row=abs_xtl, col=abs_ytl)
+        blended = blend_argb_with_rgb(fg=fg_img, bg=bg_img, row=abs_ytl, col=abs_xtl)
+        bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = blended
 
     # compensate bbox offset of fg_label
     fg_label_voc = label_yolo2voc(fg_label, fg_h, fg_w)

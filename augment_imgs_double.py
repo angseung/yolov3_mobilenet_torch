@@ -17,8 +17,8 @@ if __name__ == "__main__":
     if "Windows" in platform.platform():
         bg_img_dir = "./data/yperv1/images/train"
         bg_label_dir = "./data/yperv1/labels/train"
-        fg_img_dir = "./data/addons_v1/images/train"
-        fg_label_dir = "./data/addons_v1/labels/train"
+        fg_img_dir = "../kor_license_plate_generator/DB_new/images/train"
+        fg_label_dir = "../kor_license_plate_generator/DB_new/labels/train"
         target_dir = "./data/yperv2.1"
 
     elif "Linux" in platform.platform():
