@@ -229,6 +229,11 @@ def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str]) -> np.ndarr
 def augment_img(
     fg_img: np.ndarray, fg_label: np.ndarray, bg_img: np.ndarray, bg_label: np.ndarray
 ) -> Tuple[np.ndarray, np.ndarray, bool]:
+    if len(fg_img.shape) == 4:
+        mode = "blend"
+    else:
+        mode = "override"
+
     bg_h, bg_w = bg_img.shape[:2]
     fg_h, fg_w = fg_img.shape[:2]
 
@@ -241,17 +246,22 @@ def augment_img(
     allowed_width = area_xbr - area_xtl - fg_w
     allowed_height = area_ybr - area_ytl - fg_h
 
+    # get draw point offset
     try:
         draw_xtl = random.randint(0, allowed_width - 1)
         draw_ytl = random.randint(0, allowed_height - 1)
 
+    # do nothing if failed
     except:
         return bg_img, bg_label, False
 
     abs_xtl, abs_ytl = draw_xtl + area_xtl, draw_ytl + area_ytl
 
     # draw fg_img on bg_img
-    bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = fg_img
+    if mode == "override":
+        bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = fg_img
+    elif mode == "blend":
+        bg_img = blend_argb_with_rgb(fg=fg_img, bg=bg_img, row=abs_xtl, col=abs_ytl)
 
     # compensate bbox offset of fg_label
     fg_label_voc = label_yolo2voc(fg_label, fg_h, fg_w)
@@ -294,6 +304,22 @@ def random_resize(
         return cv2.resize(img, size, interpolation=cv2.INTER_AREA), label
 
     return cv2.resize(img, size, interpolation=cv2.INTER_AREA)
+
+
+def blend_argb_with_rgb(
+    fg: np.ndarray, bg: np.ndarray, row: int, col: int
+) -> np.ndarray:
+    _, mask = cv2.threshold(fg[:, :, 3], 1, 255, cv2.THRESH_BINARY)
+    mask_inv = cv2.bitwise_not(mask)
+    img_fg = cv2.cvtColor(fg, cv2.COLOR_BGRA2BGR)
+    h, w = img_fg.shape[:2]
+    roi = bg[row : row + h, col : col + w]
+
+    masked_fg = cv2.bitwise_and(img_fg, img_fg, mask=mask)
+    masked_bg = cv2.bitwise_and(roi, roi, mask=mask_inv)
+    blended = masked_fg + masked_bg
+
+    return blended
 
 
 if __name__ == "__main__":
