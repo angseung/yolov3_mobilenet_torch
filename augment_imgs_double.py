@@ -59,7 +59,7 @@ if __name__ == "__main__":
         bg_img = cv2.imread(f"{bg_img_dir}/{bg_file_name}.jpg")
         bg_label = parse_label(f"{bg_label_dir}/{bg_file_name}.txt")
 
-        fg_img = cv2.imread(f"{fg_img_dir}/{fg_file_name}.png")
+        fg_img = cv2.imread(f"{fg_img_dir}/{fg_file_name}.png", cv2.IMREAD_UNCHANGED)
         fg_label = parse_label(f"{fg_label_dir}/{fg_file_name}.txt")
 
         # random resize fg img
