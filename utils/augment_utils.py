@@ -261,7 +261,7 @@ def augment_img(
     if mode == "override":
         bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = fg_img
     elif mode == "blend":
-        blended = blend_argb_with_rgb(fg=fg_img, bg=bg_img, row=abs_ytl, col=abs_xtl)
+        blended = blend_bgra_on_bgr(fg=fg_img, bg=bg_img, row=abs_ytl, col=abs_xtl)
         bg_img[abs_ytl : abs_ytl + fg_h, abs_xtl : abs_xtl + fg_w, :] = blended
 
     # compensate bbox offset of fg_label
@@ -307,7 +307,7 @@ def random_resize(
     return cv2.resize(img, size, interpolation=cv2.INTER_AREA)
 
 
-def blend_argb_with_rgb(
+def blend_bgra_on_bgr(
     fg: np.ndarray, bg: np.ndarray, row: int, col: int
 ) -> np.ndarray:
     _, mask = cv2.threshold(fg[:, :, 3], 1, 255, cv2.THRESH_BINARY)
@@ -321,6 +321,38 @@ def blend_argb_with_rgb(
     blended = masked_fg + masked_bg
 
     return blended
+
+
+def blend_bgra_on_bgra(
+    fg: np.ndarray, bg: np.ndarray, row: int, col: int
+) -> np.ndarray:
+
+    assert fg.shape[2] == 4 and bg.shape[2] == 4
+
+    padded_fg = np.zeros_like(bg, dtype=np.uint8)
+    h, w = fg.shape[:2]
+    padded_fg[row : row + h, col : col + w, :] = fg
+
+    _, mask_fg = cv2.threshold(bg[:, :, 3], 1, 255, cv2.THRESH_BINARY)
+    _, mask_bg = cv2.threshold(padded_fg[:, :, 3], 1, 255, cv2.THRESH_BINARY)
+    alpha = cv2.bitwise_or(mask_fg, mask_bg)
+
+    bg[:, :, :3] = blend_bgra_on_bgr(bg=bg[:, :, :3], fg=padded_fg, row=0, col=0)
+
+    blue, green, red = cv2.split(bg[:, :, :3])
+    bgra = [blue, green, red, alpha]
+
+    return cv2.merge(bgra)
+
+
+def blend_bgr_on_bgra(
+    fg: np.ndarray, bg: np.ndarray, row: int, col: int
+) -> np.ndarray:
+    assert fg.shape[2] == 3 and bg.shape[2] == 4
+    h, w = fg.shape[:2]
+    bg[row : row + h, col : col + w, :3] = fg
+
+    return bg
 
 
 if __name__ == "__main__":
