@@ -8,6 +8,7 @@ from utils.augment_utils import (
     draw_bbox_on_img,
     augment_img,
     random_resize,
+    blend_bgra_on_bgr,
 )
 
 random.seed(123)
@@ -19,14 +20,14 @@ if __name__ == "__main__":
         bg_label_dir = "./data/yperv1/labels/train"
         fg_img_dir = "../kor_license_plate_generator/DB_new/images/train"
         fg_label_dir = "../kor_license_plate_generator/DB_new/labels/train"
-        target_dir = "./data/yperv2.1"
+        target_dir = "./data/yperv2.2"
 
     elif "Linux" in platform.platform():
         bg_img_dir = "/data_yper/yperv1/images/train"
         bg_label_dir = "/data_yper/yperv1/labels/train"
-        fg_img_dir = "/data_yper/addons_v1/images/train"
-        fg_label_dir = "/data_yper/addons_v1/labels/train"
-        target_dir = "/data_yper/yperv2.1"
+        fg_img_dir = "/data_yper/addons_v1.2/images/train"
+        fg_label_dir = "/data_yper/addons_v1.2/labels/train"
+        target_dir = "/data_yper/yperv2.2"
 
     if not os.path.isdir(target_dir):
         os.makedirs(f"{target_dir}/images/train", exist_ok=True)
