@@ -14,7 +14,6 @@ from utils.augment_utils import (
 random.seed(123)
 
 if __name__ == "__main__":
-
     if "Windows" in platform.platform():
         bg_img_dir = "./data/yperv1/images/train"
         bg_label_dir = "./data/yperv1/labels/train"
@@ -76,11 +75,15 @@ if __name__ == "__main__":
         if remainder > 1:
             fg_file_name_2 = fg_img_list_remainder[processed][:-4]
 
-            fg_img_2 = cv2.imread(f"{fg_img_dir}/{fg_file_name_2}.png")
+            fg_img_2 = cv2.imread(
+                f"{fg_img_dir}/{fg_file_name_2}.png", cv2.IMREAD_UNCHANGED
+            )
             fg_label_2 = parse_label(f"{fg_label_dir}/{fg_file_name_2}.txt")
 
             # random resize fg img
-            fg_img_2, fg_label_2 = random_resize(img=fg_img_2, label=fg_label_2)
+            fg_img_2, fg_label_2 = random_resize(
+                img=fg_img_2, label=fg_label_2, scale_min=1.0, scale_max=3.5
+            )
 
             new_img, new_label, is_done = augment_img(
                 fg_img=fg_img_2, fg_label=fg_label_2, bg_img=new_img, bg_label=new_label
