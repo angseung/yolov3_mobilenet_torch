@@ -307,9 +307,7 @@ def random_resize(
     return cv2.resize(img, size, interpolation=cv2.INTER_AREA)
 
 
-def blend_bgra_on_bgr(
-    fg: np.ndarray, bg: np.ndarray, row: int, col: int
-) -> np.ndarray:
+def blend_bgra_on_bgr(fg: np.ndarray, bg: np.ndarray, row: int, col: int) -> np.ndarray:
     _, mask = cv2.threshold(fg[:, :, 3], 1, 255, cv2.THRESH_BINARY)
     mask_inv = cv2.bitwise_not(mask)
     img_fg = cv2.cvtColor(fg, cv2.COLOR_BGRA2BGR)
@@ -326,7 +324,6 @@ def blend_bgra_on_bgr(
 def blend_bgra_on_bgra(
     fg: np.ndarray, bg: np.ndarray, row: int, col: int
 ) -> np.ndarray:
-
     assert fg.shape[2] == 4 and bg.shape[2] == 4
 
     padded_fg = np.zeros_like(bg, dtype=np.uint8)
@@ -345,9 +342,7 @@ def blend_bgra_on_bgra(
     return cv2.merge(bgra)
 
 
-def blend_bgr_on_bgra(
-    fg: np.ndarray, bg: np.ndarray, row: int, col: int
-) -> np.ndarray:
+def blend_bgr_on_bgra(fg: np.ndarray, bg: np.ndarray, row: int, col: int) -> np.ndarray:
     assert fg.shape[2] == 3 and bg.shape[2] == 4
     h, w = fg.shape[:2]
     bg[row : row + h, col : col + w, :3] = fg

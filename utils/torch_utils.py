@@ -428,7 +428,6 @@ def to_grayscale(num_output_channels: int = 3) -> nn.Module:
 
 
 def to_ycbcr(img_batch: Tensor) -> Tensor:
-
     r = img_batch.clone()[:, 0, :, :]
     g = img_batch.clone()[:, 1, :, :]
     b = img_batch.clone()[:, 2, :, :]
