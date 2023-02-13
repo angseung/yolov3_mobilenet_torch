@@ -323,7 +323,9 @@ def check_requirements(
     for r in requirements:
         try:
             pkg.require(r)
-        except Exception as e:  # DistributionNotFound or VersionConflict if requirements not met
+        except (
+            Exception
+        ) as e:  # DistributionNotFound or VersionConflict if requirements not met
             s = f"{prefix} {r} not found and is required by YOLOv3"
             if install:
                 print(f"{s}, attempting auto-update...")
@@ -758,7 +760,10 @@ def segment2box(segment, width=640, height=640):
     # Convert 1 segment label to 1 box label, applying inside-image constraint, i.e. (xy1, xy2, ...) to (xyxy)
     x, y = segment.T  # segment xy
     inside = (x >= 0) & (y >= 0) & (x <= width) & (y <= height)
-    x, y, = (
+    (
+        x,
+        y,
+    ) = (
         x[inside],
         y[inside],
     )
@@ -1073,7 +1078,6 @@ def convert_model_to_onnx(
     input_size: Tuple[int, int, int, int],
     onnx_name: str = "model.onnx",
 ) -> None:
-
     # set the model to inference mode
     model.eval()
 
