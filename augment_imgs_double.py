@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
         # random resize fg img
         fg_img, fg_label = random_resize(
-            img=fg_img, label=fg_label, scale_min=1.0, scale_max=3.5
+            img=fg_img, label=fg_label, scale_min=1.0, scale_max=4.0
         )
 
         new_img, new_label, _ = augment_img(
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
             # random resize fg img
             fg_img_2, fg_label_2 = random_resize(
-                img=fg_img_2, label=fg_label_2, scale_min=1.0, scale_max=3.5
+                img=fg_img_2, label=fg_label_2, scale_min=1.0, scale_max=4.0
             )
 
             new_img, new_label, is_done = augment_img(
