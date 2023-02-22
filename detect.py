@@ -100,6 +100,8 @@ def run(
 
     # Load model
     device = select_device(device)
+    best_epoch = torch.load(weights, map_location=device)["epoch"]
+    print(f"loading best scored model, {best_epoch}th...")
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
     stride, names, pt, jit, onnx = (
         model.stride,
