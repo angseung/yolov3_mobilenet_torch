@@ -229,10 +229,13 @@ def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str]) -> np.ndarr
 def augment_img(
     fg_img: np.ndarray, fg_label: np.ndarray, bg_img: np.ndarray, bg_label: np.ndarray
 ) -> Tuple[np.ndarray, np.ndarray, bool]:
-    if fg_img.shape[2] == 4:
-        mode = "blend"
+    if len(fg_img.shape) != 2:
+        if fg_img.shape[2] == 4:
+            mode = "blend"
+        else:
+            mode = "override"
     else:
-        mode = "override"
+        mode = "blend"
 
     bg_h, bg_w = bg_img.shape[:2]
     fg_h, fg_w = fg_img.shape[:2]
