@@ -75,7 +75,7 @@ def soft_nms(
         scores[pos:] = weight * scores[pos:]
 
     # select the boxes and keep the corresponding indexes
-    keep = dets[:, 4][scores > thresh].int()
+    keep = dets[:, 4][scores > thresh].type(torch.int64)
 
     return keep
 
