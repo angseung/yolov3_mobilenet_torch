@@ -80,6 +80,7 @@ def run(
     normalize=True,
     gray=False,
     rm_doubled_bboxes=False,
+    use_soft=False,
 ):
     assert not (
         normalize and gray
@@ -177,13 +178,24 @@ def run(
 
         # NMS
         pred = non_max_suppression(
-            pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det
+            pred,
+            conf_thres,
+            iou_thres,
+            classes,
+            agnostic_nms,
+            max_det=max_det,
+            use_soft=use_soft,
         )
 
         # secondary nms to drop missing doubled bbox
         if rm_doubled_bboxes:
             from torchvision.ops import nms
-            tmp = nms(boxes=pred[0][:, :4], scores=pred[0][:, 4], iou_threshold=iou_thres).detach().tolist()
+
+            tmp = (
+                nms(boxes=pred[0][:, :4], scores=pred[0][:, 4], iou_threshold=iou_thres)
+                .detach()
+                .tolist()
+            )
             pred = [pred[0][tmp]]
 
         dt[2] += time_sync() - t3
@@ -342,7 +354,7 @@ def parse_opt():
         "--normalize", action="store_true", help="apply normalizer or not"
     )
     parser.add_argument(
-        "--rm-doubled-bboxes", action="store_true", help="apply normalizer or not"
+        "--rm-doubled-bboxes", action="store_true", help="use additional nms"
     )
     parser.add_argument("--gray", action="store_true", help="apply normalizer or not")
     parser.add_argument(
@@ -350,6 +362,9 @@ def parse_opt():
     )
     parser.add_argument(
         "--iou-thres", type=float, default=0.45, help="NMS IoU threshold"
+    )
+    parser.add_argument(
+        "--use-soft", action="store_true", help="use soft nms rather than normal nms"
     )
     parser.add_argument(
         "--max-det", type=int, default=1000, help="maximum detections per image"
