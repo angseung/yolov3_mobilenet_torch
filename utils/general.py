@@ -32,6 +32,7 @@ import yaml
 
 from utils.downloads import gsutil_getsize
 from utils.metrics import box_iou, fitness
+from utils.soft_nms import soft_nms
 
 # Settings
 torch.set_printoptions(linewidth=320, precision=5, profile="long")
@@ -835,6 +836,7 @@ def non_max_suppression(
     multi_label=False,
     labels=(),
     max_det=300,
+    use_soft=False,
 ):
     """Runs Non-Maximum Suppression (NMS) on inference results
 
@@ -913,7 +915,10 @@ def non_max_suppression(
         # Batched NMS
         c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
         boxes, scores = x[:, :4] + c, x[:, 4]  # boxes (offset by class), scores
-        i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
+        if use_soft:
+            i = soft_nms(boxes, scores, thresh=iou_thres)  # soft NMS
+        else:
+            i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
         if i.shape[0] > max_det:  # limit detections
             i = i[:max_det]
         if merge and (1 < n < 3e3):  # Merge NMS (boxes merged using weighted mean)
