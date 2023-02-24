@@ -155,7 +155,7 @@ def run(
     for path, im, im0s, vid_cap, s in dataset:
         t1 = time_sync()
         if edge:
-            im = auto_canny(im)
+            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose([2, 0, 1])
 
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32

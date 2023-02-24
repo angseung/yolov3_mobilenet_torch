@@ -353,7 +353,7 @@ def blend_bgr_on_bgra(fg: np.ndarray, bg: np.ndarray, row: int, col: int) -> np.
     return bg
 
 
-def auto_canny(image: np.ndarray, sigma: float = 0.33) -> np.ndarray:
+def auto_canny(image: np.ndarray, sigma: float = 0.33, return_rgb: bool = False) -> np.ndarray:
     image = cv2.GaussianBlur(image, (7, 7), 0)
     # compute the median of the single channel pixel intensities
     v = np.median(image)
@@ -362,6 +362,9 @@ def auto_canny(image: np.ndarray, sigma: float = 0.33) -> np.ndarray:
     lower = int(max(0, (1.0 - sigma) * v))
     upper = int(min(255, (1.0 + sigma) * v))
     edged = cv2.Canny(image, lower, upper)
+
+    if return_rgb:
+        edged = cv2.cvtColor(edged, cv2.COLOR_GRAY2RGB)
 
     # return the edged image
     return edged
