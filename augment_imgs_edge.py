@@ -6,10 +6,6 @@ import numpy as np
 from utils.augment_utils import (
     parse_label,
     write_label,
-    draw_bbox_on_img,
-    augment_img,
-    random_resize,
-    blend_bgra_on_bgr,
 )
 
 random.seed(123)
@@ -38,8 +34,8 @@ if __name__ == "__main__":
         target_dir = "./data/yper_edge"
 
     elif "Linux" in platform.platform():
-        bg_img_dir = "/data_yper/yperv1/images/train"
-        bg_label_dir = "/data_yper/yperv1/labels/train"
+        bg_img_dir = "/data_yper/yperv2.1/images/train"
+        bg_label_dir = "/data_yper/yperv2.1/labels/train"
         fg_img_dir = "/data_yper/addons_v1.2/images/train"
         fg_label_dir = "/data_yper/addons_v1.2/labels/train"
         target_dir = "/data_yper/yper_edge"
@@ -60,69 +56,19 @@ if __name__ == "__main__":
     processed = 0
     remainder = len(fg_img_list) - len(bg_img_list)
 
-    fg_img_list, fg_img_list_remainder = (
-        fg_img_list[: len(bg_img_list)],
-        fg_img_list[len(bg_img_list) :],
-    )
-
     for i, (bg_file_name, fg_file_name) in enumerate(zip(bg_img_list, fg_img_list)):
         print(f"processing {i}/{len(bg_img_list)}th sample, {bg_file_name}")
 
         # remove suffix and new line
         bg_file_name = bg_file_name[:-1]
-        fg_file_name = fg_file_name[:-4]
 
         bg_img = cv2.imread(f"{bg_img_dir}/{bg_file_name}.jpg")
-        # bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2GRAY)
         bg_label = parse_label(f"{bg_label_dir}/{bg_file_name}.txt")
 
-        fg_img = cv2.imread(f"{fg_img_dir}/{fg_file_name}.png", cv2.IMREAD_UNCHANGED)
-        # fg_img = cv2.cvtColor(fg_img, cv2.COLOR_BGRA2GRAY)
-        fg_label = parse_label(f"{fg_label_dir}/{fg_file_name}.txt")
-
-        # random resize fg img
-        fg_img, fg_label = random_resize(
-            img=fg_img, label=fg_label, scale_min=1.0, scale_max=4.0
-        )
-
-        new_img, new_label, _ = augment_img(
-            fg_img=fg_img, fg_label=fg_label, bg_img=bg_img, bg_label=bg_label
-        )
-
-        # append second fg_img
-        if remainder > 1:
-            fg_file_name_2 = fg_img_list_remainder[processed][:-4]
-
-            fg_img_2 = cv2.imread(
-                f"{fg_img_dir}/{fg_file_name_2}.png", cv2.IMREAD_UNCHANGED
-            )
-            # fg_img_2 = cv2.cvtColor(fg_img_2, cv2.COLOR_BGRA2GRAY)
-            fg_label_2 = parse_label(f"{fg_label_dir}/{fg_file_name_2}.txt")
-
-            # random resize fg img
-            fg_img_2, fg_label_2 = random_resize(
-                img=fg_img_2, label=fg_label_2, scale_min=1.0, scale_max=4.0
-            )
-
-            new_img, new_label, is_done = augment_img(
-                fg_img=fg_img_2, fg_label=fg_label_2, bg_img=new_img, bg_label=new_label
-            )
-
-            processed += is_done
-            remainder -= is_done
-
-
-        # draw bbox for debug
-        # new_img = draw_bbox_on_img(new_img, new_label)
-
         # convert to gray and detect edge
-        new_img = cv2.cvtColor(new_img, cv2.COLOR_BGR2GRAY)
-        # new_img = cv2.GaussianBlur(new_img, (3, 3), 0)
-        # threshold1 = 100
-        # threshold2 = 500
-        # new_img = cv2.Canny(new_img, threshold1, threshold2)
+        new_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2GRAY)
         new_img = auto_canny(new_img)
 
         # export augmented data
         cv2.imwrite(f"{target_dir}/images/train/{bg_file_name}.jpg", new_img)
-        write_label(f"{target_dir}/labels/train", bg_file_name, new_label)
+        write_label(f"{target_dir}/labels/train", bg_file_name, bg_label)
