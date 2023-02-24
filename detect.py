@@ -20,6 +20,7 @@ from pathlib import Path
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
+from torchvision.ops import nms
 import yaml
 
 FILE = Path(__file__).resolve()
@@ -193,7 +194,6 @@ def run(
 
         # secondary nms to drop missing doubled bbox
         if rm_doubled_bboxes:
-            from torchvision.ops import nms
 
             tmp = (
                 nms(boxes=pred[0][:, :4], scores=pred[0][:, 4], iou_threshold=iou_thres)
