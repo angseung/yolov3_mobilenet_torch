@@ -180,6 +180,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     )  # COCO dataset
 
     # Model
+    in_channel = 1 if opt.gray_img else 3
     if "." not in weights:  # skip suffix check if opt.weights does not have suffix
         pretrained = False
     else:
@@ -191,7 +192,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
             weights = attempt_download(weights)  # download if not found locally
         ckpt = torch.load(weights, map_location=device)  # load checkpoint
         model = Model(
-            cfg or ckpt["model"].yaml, ch=3, nc=nc, anchors=hyp.get("anchors")
+            cfg or ckpt["model"].yaml, ch=in_channel, nc=nc, anchors=hyp.get("anchors")
         ).to(
             device
         )  # create
@@ -206,7 +207,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         )  # report
     else:
         # hyp["anchors"] value was parsed from anchors value in data/hyps/hyp.scratch.yaml
-        model = Model(cfg, ch=3, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
+        model = Model(cfg, ch=in_channel, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
 
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
@@ -708,6 +709,7 @@ def parse_opt(known=False):
         "--normalize", action="store_true", help="apply normalizer or not"
     )
     parser.add_argument("--gray", action="store_true", help="apply grayscale or not")
+    parser.add_argument("--gray-img", action="store_true", help="grayscale input image")
     parser.add_argument(
         "--setseed", action="store_true", help="apply normalizer or not"
     )

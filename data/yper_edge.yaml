@@ -1,10 +1,10 @@
 # YOLOv3 🚀 by Ultralytics, GPL-3.0 license
 # yperv1 dataset
-# Example usage: python train.py --data yperv2.2.yaml
+# Example usage: python train.py --data yper_edge.yaml
 # parent
 # ├── yolov3
 # └── datasets
-#     └── yperv2.2
+#     └── yper_edge
 #         └── images
 #             └── train
 #                 └── imgs.jpg
@@ -17,7 +17,7 @@
 #             └── test
 
 # Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
-path: /data_yper/yperv2.2
+path: /data_yper/yper_edge
 train: images/train
 val: images/train
 #test: images/test

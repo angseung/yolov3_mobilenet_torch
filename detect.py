@@ -20,6 +20,7 @@ from pathlib import Path
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
+from torchvision.ops import nms
 import yaml
 
 FILE = Path(__file__).resolve()
@@ -48,7 +49,7 @@ from utils.general import (
 from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
-
+from utils.augment_utils import auto_canny
 
 @torch.no_grad()
 def run(
@@ -81,6 +82,7 @@ def run(
     gray=False,
     rm_doubled_bboxes=False,
     use_soft=False,
+    edge=False,
 ):
     assert not (
         normalize and gray
@@ -152,6 +154,9 @@ def run(
     dt, seen = [0.0, 0.0, 0.0], 0
     for path, im, im0s, vid_cap, s in dataset:
         t1 = time_sync()
+        if edge:
+            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose([2, 0, 1])
+
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
@@ -189,7 +194,6 @@ def run(
 
         # secondary nms to drop missing doubled bbox
         if rm_doubled_bboxes:
-            from torchvision.ops import nms
 
             tmp = (
                 nms(boxes=pred[0][:, :4], scores=pred[0][:, 4], iou_threshold=iou_thres)
@@ -356,7 +360,8 @@ def parse_opt():
     parser.add_argument(
         "--rm-doubled-bboxes", action="store_true", help="use additional nms"
     )
-    parser.add_argument("--gray", action="store_true", help="apply normalizer or not")
+    parser.add_argument("--gray", action="store_true", help="apply grayscale or not")
+    parser.add_argument("--edge", action="store_true", help="apply canny edge or not")
     parser.add_argument(
         "--conf-thres", type=float, default=0.25, help="confidence threshold"
     )
