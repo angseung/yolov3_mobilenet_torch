@@ -210,7 +210,7 @@ def write_label(target_dir: str, fname: str, bboxes: np.ndarray) -> None:
             f.write(f"{target_str}\n")
 
 
-def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str]) -> np.ndarray:
+def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str], color: Union[Tuple[int, int, int], str]) -> np.ndarray:
     if isinstance(label, str):
         label = parse_label(label)
 
@@ -221,7 +221,7 @@ def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str]) -> np.ndarr
 
     for i in range(label.shape[0]):
         pos = tuple(label[i][1:].tolist())
-        draw.rectangle(pos, outline=(0, 0, 0), width=3)
+        draw.rectangle(pos, outline=color, width=3)
 
     return np.asarray(img)
 
