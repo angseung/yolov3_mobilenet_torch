@@ -18,16 +18,20 @@ import sys
 from pathlib import Path
 
 import cv2
+import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 from torchvision.ops import nms
 import yaml
+from PIL import ImageFont, ImageDraw, Image
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
+fontpath = "fonts/NanumBarunGothic.ttf"
+font = ImageFont.truetype(fontpath, 48)
 
 from models.common import DetectMultiBackend
 from utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
@@ -293,6 +297,11 @@ def run(
 
             # Stream results
             im0 = annotator.result()
+            img_pillow = Image.fromarray(im0)
+            draw = ImageDraw.Draw(img_pillow)
+            draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
+            im0 = np.array(img_pillow)
+
             if view_img:
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
