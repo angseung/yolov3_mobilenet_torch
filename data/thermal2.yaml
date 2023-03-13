@@ -1,4 +1,4 @@
-path: ./data/thermal2
+path: /data_yper/thermal2
 train: images/train
 val: images/train
 

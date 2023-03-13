@@ -12,7 +12,7 @@ def read_bboxes(bboxes: np.ndarray, tolerance: Optional[float] = 0.3) -> str:
     index_second_row = None
 
     # check plate has a row or 2 rows
-    bboxes_ytl = np.sort(bboxes[:, 1].flatten())
+    bboxes_ytl = np.sort(bboxes[:, 1].detach().cpu().flatten())
     ytl_first_row = bboxes_ytl[0]
 
     for i, ytl in enumerate(bboxes_ytl[1:]):
@@ -42,7 +42,7 @@ def read_bboxes(bboxes: np.ndarray, tolerance: Optional[float] = 0.3) -> str:
 
 def bboxes_to_string(bboxes: np.ndarray) -> str:
     plate_string = ""
-    bboxes_xtl = bboxes[:, 0].flatten()
+    bboxes_xtl = bboxes[:, 0].detach().cpu().flatten()
     bboxes_sequence = np.argsort(bboxes_xtl)
 
     for curr_bbox in bboxes_sequence:
