@@ -50,6 +50,7 @@ from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
+from utils.detect_utils import read_bboxes
 
 @torch.no_grad()
 def run(
@@ -248,6 +249,9 @@ def run(
                 # Reorder: number first, Korean last
                 _, indices = torch.sort(det[:, 5], descending=True)
                 det = det[indices]
+
+                # make bboxes to korean string
+                plate_string = read_bboxes(det)
 
                 # Print results
                 for c in det[:, -1].unique():
