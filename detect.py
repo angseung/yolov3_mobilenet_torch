@@ -122,6 +122,7 @@ def run(
     imgsz = check_img_size(imgsz, s=stride)  # check image size
     transform_normalize = normalizer()
     transform_to_gray = to_grayscale(num_output_channels=3)
+    plate_string = ""
 
     # Mapping class index to real value for yper data
     if len(names) == 84:
