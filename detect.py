@@ -261,7 +261,7 @@ def run(
                 det = det[indices]
 
                 # make bboxes to korean string
-                plate_string = read_bboxes(det)
+                plate_string = read_bboxes(det) if len(det) < 9 else ""
 
                 # Print results
                 for c in det[:, -1].unique():
