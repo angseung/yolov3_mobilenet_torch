@@ -76,3 +76,30 @@ def bboxes_to_string(bboxes: np.ndarray) -> str:
         plate_string += curr_string
 
     return plate_string
+
+
+def split_plate_line(bboxes: np.ndarray, angular_thresh: int) -> Tuple[np.ndarray, np.ndarray]:
+    bbox_in_first_line = []
+    bbox_in_second_line = []
+
+    for i, bbox in enumerate(bboxes[:-1, :]):
+        if i == 0:
+            bbox_in_first_line.append(bbox[i])
+
+        p1 = bbox[i][:2].tolist()
+        p2 = bbox[i + 1][:2].tolist()
+        angle = angle_between(p1, p2)
+
+        if angle >= angular_thresh:
+            bbox_in_second_line.append(bbox[i + 1])
+        else:
+            bbox_in_first_line.append(bbox[i + 1])
+
+    if len(bbox_in_second_line) > len(bbox_in_first_line):
+        bbox_in_first_line, bbox_in_second_line = bbox_in_second_line, bbox_in_first_line
+
+    bbox_in_first_line = np.array(bbox_in_first_line)
+    bbox_in_second_line = np.array(bbox_in_second_line)
+
+
+    return bbox_in_first_line, bbox_in_second_line
