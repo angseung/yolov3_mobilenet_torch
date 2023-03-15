@@ -1,71 +1,36 @@
 from typing import *
 import numpy as np
 from .classes_map import class_labels
-from .augment_utils import label_voc2yolo, label_yolo2voc
 
 
-def angle_between(p1: List[float], p2: List[float]) -> float:
+def angle_between(p1: List[float], p2: List[float], signed: Optional[bool] = False) -> float:
     delta_x = (p2[0] - p1[0])
     delta_y = (p2[1] - p1[1])
+    angle = np.arctan2(delta_y, delta_x) * 180 / np.pi
 
-    return abs(np.arctan2(delta_y, delta_x) * 180 / np.pi)
+    return angle if signed else abs(angle)
 
 
-def read_bboxes(bboxes: np.ndarray, tolerance: Optional[float] = 0.3) -> str:
+def read_bboxes(bboxes: np.ndarray, tolerance: Optional[float] = 0.3, angular_thresh: Optional[Union[float, int]] = 25.0) -> str:
     """
     bboxes: voc format, (xtl, ytl, xbr, ybr, confidence, classes_labels)
     """
-    is_multi_row = False
-    plate_string = ""
-    index_second_row = None
-    angular_thresh = 15.0
 
-    # check plate has a row or 2 rows
-    # bboxes_ytl = np.sort(bboxes[:, 1].detach().cpu().flatten())
-    # ytl_first_row = bboxes_ytl[0]
-    #
-    # for i, ytl in enumerate(bboxes_ytl[1:]):
-    #     if ytl_first_row - tolerance * ytl_first_row <= ytl <= ytl_first_row + tolerance * ytl_first_row:
-    #         ytl_first_row = ytl
-    #         continue
-    #
-    #     else:
-    #         index_second_row = i
-    #         is_multi_row = True
-    #         break
-
-    bboxes_xtl = np.sort(bboxes[:, 0].detach().cpu().flatten())
+    bboxes = bboxes.detach().cpu()
     bboxes_sequence = np.argsort(bboxes[:, 0].detach().cpu().flatten())
     bboxes_reordered = bboxes[bboxes_sequence]
 
-    point_1 = bboxes_reordered[0][:2].tolist()
-    point_2 = bboxes_reordered[1][:2].tolist()
-    point_3 = bboxes_reordered[2][:2].tolist()
+    a, b = split_plate_line(bboxes_reordered, angular_thresh)
+    a = bboxes_to_string(a)
+    b = bboxes_to_string(b)
 
-    angle_1 = angle_between(point_1, point_2) > angular_thresh
-    angle_2 = angle_between(point_1, point_3) > angular_thresh
-    angle_3 = angle_between(point_2, point_3) > angular_thresh
-
-    is_multi_row = angle_1 or angle_2 or angle_3
-
-    base_ytl = 1.25 * bboxes[:, 1].detach().cpu().flatten().numpy().mean()
-
-    # read plates
-    if is_multi_row:  # short plates
-        bbox_mask = bboxes[:, 3] > base_ytl
-        bboxes_in_second_row = bboxes[bbox_mask]
-        bboxes_in_first_row = bboxes[np.logical_not(bbox_mask)]
-        plate_string_first_row = bboxes_to_string(bboxes_in_first_row)
-        plate_string_second_row = bboxes_to_string(bboxes_in_second_row)
-        plate_string = plate_string_first_row + plate_string_second_row
-
-    else:  # long plates
-        plate_string = bboxes_to_string(bboxes)
+    plate_string = a + b
 
     return plate_string
 
 
 def bboxes_to_string(bboxes: np.ndarray) -> str:
+    bboxes = bboxes.detach().cpu()
     plate_string = ""
     bboxes_xtl = bboxes[:, 0].detach().cpu().flatten()
     bboxes_sequence = np.argsort(bboxes_xtl)
@@ -79,27 +44,26 @@ def bboxes_to_string(bboxes: np.ndarray) -> str:
 
 
 def split_plate_line(bboxes: np.ndarray, angular_thresh: int) -> Tuple[np.ndarray, np.ndarray]:
-    bbox_in_first_line = []
-    bbox_in_second_line = []
+    bboxes = bboxes.detach().cpu()
+
+    # True line is first line, and False line is second line
+    line_of_bbox = np.array([False] * bboxes.shape[0])
 
     for i, bbox in enumerate(bboxes[:-1, :]):
         if i == 0:
-            bbox_in_first_line.append(bbox[i])
+            line_of_bbox[i] = False
 
-        p1 = bbox[i][:2].tolist()
-        p2 = bbox[i + 1][:2].tolist()
+        p1 = bboxes[i][:2].tolist()
+        p2 = bboxes[i + 1][:2].tolist()
         angle = angle_between(p1, p2)
 
-        if angle >= angular_thresh:
-            bbox_in_second_line.append(bbox[i + 1])
-        else:
-            bbox_in_first_line.append(bbox[i + 1])
+        is_another_line = True if angle >= angular_thresh else False
+        line_of_bbox[i + 1] = line_of_bbox[i] ^ is_another_line
 
-    if len(bbox_in_second_line) > len(bbox_in_first_line):
+    bbox_in_first_line = bboxes[line_of_bbox]
+    bbox_in_second_line = bboxes[np.logical_not(line_of_bbox)]
+
+    if bbox_in_first_line.shape[0] > bbox_in_second_line.shape[0]:
         bbox_in_first_line, bbox_in_second_line = bbox_in_second_line, bbox_in_first_line
-
-    bbox_in_first_line = np.array(bbox_in_first_line)
-    bbox_in_second_line = np.array(bbox_in_second_line)
-
 
     return bbox_in_first_line, bbox_in_second_line
