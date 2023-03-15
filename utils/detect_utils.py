@@ -11,7 +11,7 @@ def angle_between(p1: List[float], p2: List[float], signed: Optional[bool] = Fal
     return angle if signed else abs(angle)
 
 
-def read_bboxes(bboxes: np.ndarray, tolerance: Optional[float] = 0.3, angular_thresh: Optional[Union[float, int]] = 25.0) -> str:
+def read_bboxes(bboxes: np.ndarray, angular_thresh: Optional[Union[float, int]] = 25.0) -> str:
     """
     bboxes: voc format, (xtl, ytl, xbr, ybr, confidence, classes_labels)
     """
