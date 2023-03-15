@@ -18,16 +18,20 @@ import sys
 from pathlib import Path
 
 import cv2
+import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 from torchvision.ops import nms
 import yaml
+from PIL import ImageFont, ImageDraw, Image
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
+fontpath = "fonts/NanumBarunGothic.ttf"
+font = ImageFont.truetype(fontpath, 48)
 
 from models.common import DetectMultiBackend
 from utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
@@ -50,6 +54,7 @@ from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
+from utils.detect_utils import read_bboxes
 
 @torch.no_grad()
 def run(
@@ -117,6 +122,7 @@ def run(
     imgsz = check_img_size(imgsz, s=stride)  # check image size
     transform_normalize = normalizer()
     transform_to_gray = to_grayscale(num_output_channels=3)
+    plate_string = ""
 
     # Mapping class index to real value for yper data
     if len(names) == 84:
@@ -241,6 +247,11 @@ def run(
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+
+            # for video detect applications...
+            if Path(source).suffix[1:] in VID_FORMATS and i >= 1:
+                plate_string = plate_string
+
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
@@ -248,6 +259,9 @@ def run(
                 # Reorder: number first, Korean last
                 _, indices = torch.sort(det[:, 5], descending=True)
                 det = det[indices]
+
+                # make bboxes to korean string
+                plate_string = read_bboxes(det) if len(det) < 9 else ""
 
                 # Print results
                 for c in det[:, -1].unique():
@@ -289,6 +303,11 @@ def run(
 
             # Stream results
             im0 = annotator.result()
+            img_pillow = Image.fromarray(im0)
+            draw = ImageDraw.Draw(img_pillow)
+            draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
+            im0 = np.array(img_pillow)
+
             if view_img:
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
