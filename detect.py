@@ -54,7 +54,7 @@ from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
-from utils.detect_utils import read_bboxes
+from utils.detect_utils import read_bboxes, correction_plate
 
 @torch.no_grad()
 def run(
@@ -261,7 +261,7 @@ def run(
                 det = det[indices]
 
                 # make bboxes to korean string
-                plate_string = read_bboxes(det, angular_thresh=30.0) if len(det) < 9 else ""
+                plate_string = correction_plate(read_bboxes(det, angular_thresh=30.0)) if len(det) < 9 else ""
 
                 # Print results
                 for c in det[:, -1].unique():

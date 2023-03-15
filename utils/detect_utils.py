@@ -101,24 +101,21 @@ def correction_plate(plate_string: str) -> str:
         try:
             curr_car_type = int(curr_car_type)
 
-        except ValueError:
+        except ValueError:  # failed to read first two numbers
             return plate_string
 
         # correct char if car_type is not in [80, 97] (trucks)
         # check this URL for more detail (https://whybrary.mindalive.co.kr/story/?idx=5807476&bmode=view)
-        if curr_car_type not in list(
-            range(80, 97 + 1)
-        ):  # for all cars which is not a truck
-            if curr_char in ["버", "보", "부", "배"]:
-                plate_string[regional_offset + 2 : regional_offset + 3] = "바"
+        if curr_char in ["버", "보", "부", "배"] and curr_car_type not in list(range(80, 97 + 1)):
+            plate_string[regional_offset + 2 : regional_offset + 3] = "바"
 
-            elif curr_char in ["서", "소", "수"]:
-                plate_string[regional_offset + 2 : regional_offset + 3] = "사"
+        if curr_char in ["서", "소", "수"]:
+            plate_string[regional_offset + 2 : regional_offset + 3] = "사"
 
-            elif curr_char in ["어", "오", "우"]:
-                plate_string[regional_offset + 2 : regional_offset + 3] = "아"
+        if curr_char in ["어", "오", "우"]:
+            plate_string[regional_offset + 2 : regional_offset + 3] = "아"
 
-            elif curr_char in ["저", "조", "주"]:
-                plate_string[regional_offset + 2 : regional_offset + 3] = "자"
+        if curr_char in ["저", "조", "주"]:
+            plate_string[regional_offset + 2 : regional_offset + 3] = "자"
 
     return plate_string
