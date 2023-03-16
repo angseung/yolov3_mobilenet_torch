@@ -94,6 +94,8 @@ def run(
         normalize and gray
     )  # select gray or normalize. when selected both, escapes.
 
+    plate_string = ""
+
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
