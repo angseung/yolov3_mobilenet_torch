@@ -21,7 +21,7 @@ def read_bboxes(
     """
 
     bboxes = bboxes.detach().cpu()
-    bboxes_sequence = np.argsort(bboxes[:, 0].detach().cpu().flatten())
+    bboxes_sequence = np.argsort(bboxes[:, 0].flatten())
     bboxes_reordered = bboxes[bboxes_sequence]
 
     a, b = split_plate_line(bboxes_reordered, angular_thresh)
@@ -36,7 +36,7 @@ def read_bboxes(
 def bboxes_to_string(bboxes: np.ndarray) -> str:
     bboxes = bboxes.detach().cpu()
     plate_string = ""
-    bboxes_xtl = bboxes[:, 0].detach().cpu().flatten()
+    bboxes_xtl = bboxes[:, 0].flatten()
     bboxes_sequence = np.argsort(bboxes_xtl)
 
     for curr_bbox in bboxes_sequence:
