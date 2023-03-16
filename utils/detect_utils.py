@@ -79,9 +79,9 @@ def split_plate_line(
 
 
 def correction_plate(plate_string: str) -> str:
-    # check length
     is_region = False
 
+    # check length
     if len(plate_string) < 6:  # plate string must have at least 6 numbers
         return plate_string
 
@@ -101,25 +101,22 @@ def correction_plate(plate_string: str) -> str:
         try:
             curr_car_type = int(curr_car_type)
 
-        except ValueError:  # failed to read first two numbers
+        # failed to read first two numbers
+        except ValueError:
             return plate_string
 
         # correct char if car_type is not in [80, 97] (trucks)
         # check this URL for more detail (https://whybrary.mindalive.co.kr/story/?idx=5807476&bmode=view)
         if curr_char in ["버", "보", "부", "배"] and curr_car_type not in list(range(80, 97 + 1)):
             plate_string.replace(curr_char, "바")
-            # plate_string[regional_offset + 2 : regional_offset + 3] = "바"
 
         if curr_char in ["서", "소", "수"]:
             plate_string.replace(curr_char, "사")
-            # plate_string[regional_offset + 2 : regional_offset + 3] = "사"
 
         if curr_char in ["어", "오", "우"]:
             plate_string.replace(curr_char, "아")
-            # plate_string[regional_offset + 2 : regional_offset + 3] = "아"
 
         if curr_char in ["저", "조", "주"]:
             plate_string.replace(curr_char, "자")
-            # plate_string[regional_offset + 2 : regional_offset + 3] = "자"
 
     return plate_string
