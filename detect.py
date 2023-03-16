@@ -54,7 +54,7 @@ from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
-from utils.detect_utils import read_bboxes
+from utils.detect_utils import read_bboxes, correction_plate
 
 @torch.no_grad()
 def run(
@@ -88,10 +88,13 @@ def run(
     rm_doubled_bboxes=False,
     use_soft=False,
     edge=False,
+    print_string=False,
 ):
     assert not (
         normalize and gray
     )  # select gray or normalize. when selected both, escapes.
+
+    plate_string = ""
 
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
@@ -122,7 +125,6 @@ def run(
     imgsz = check_img_size(imgsz, s=stride)  # check image size
     transform_normalize = normalizer()
     transform_to_gray = to_grayscale(num_output_channels=3)
-    plate_string = ""
 
     # Mapping class index to real value for yper data
     if len(names) == 84:
@@ -249,7 +251,7 @@ def run(
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
 
             # for video detect applications...
-            if Path(source).suffix[1:] in VID_FORMATS and i >= 1:
+            if Path(source).suffix[1:] in VID_FORMATS and i >= 1 and print_string:
                 plate_string = plate_string
 
             if len(det):
@@ -261,7 +263,8 @@ def run(
                 det = det[indices]
 
                 # make bboxes to korean string
-                plate_string = read_bboxes(det) if len(det) < 9 else ""
+                if print_string:
+                    plate_string = correction_plate(read_bboxes(det, angular_thresh=30.0)) if len(det) < 9 else ""
 
                 # Print results
                 for c in det[:, -1].unique():
@@ -375,6 +378,9 @@ def parse_opt():
     )
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"
+    )
+    parser.add_argument(
+        "--print-string", action="store_true", help="apply normalizer or not"
     )
     parser.add_argument(
         "--rm-doubled-bboxes", action="store_true", help="use additional nms"

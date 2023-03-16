@@ -210,7 +210,11 @@ def write_label(target_dir: str, fname: str, bboxes: np.ndarray) -> None:
             f.write(f"{target_str}\n")
 
 
-def draw_bbox_on_img(img: np.ndarray, label: Union[np.ndarray, str], color: Union[Tuple[int, int, int], str]) -> np.ndarray:
+def draw_bbox_on_img(
+    img: np.ndarray,
+    label: Union[np.ndarray, str],
+    color: Union[Tuple[int, int, int], str],
+) -> np.ndarray:
     if isinstance(label, str):
         label = parse_label(label)
 
@@ -353,7 +357,9 @@ def blend_bgr_on_bgra(fg: np.ndarray, bg: np.ndarray, row: int, col: int) -> np.
     return bg
 
 
-def auto_canny(image: np.ndarray, sigma: float = 0.33, return_rgb: bool = False) -> np.ndarray:
+def auto_canny(
+    image: np.ndarray, sigma: float = 0.33, return_rgb: bool = False
+) -> np.ndarray:
     image = cv2.GaussianBlur(image, (7, 7), 0)
     # compute the median of the single channel pixel intensities
     v = np.median(image)
