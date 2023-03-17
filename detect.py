@@ -312,7 +312,7 @@ def run(
             im0 = annotator.result()
             img_pillow = Image.fromarray(im0)
             
-            if len(det) != 0:
+            if len(det) != 0 and (i%6)==0:
                 x, y = (det[0][0]+det[0][2])/2,(det[0][1]+det[0][3])/2
                 points_x.append(x)
                 points_y.append(y)
