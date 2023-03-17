@@ -54,12 +54,12 @@ from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
-from utils.detect_utils import read_bboxes
+#from utils.detect_utils import read_bboxes
 
 @torch.no_grad()
 def run(
-    weights=ROOT / "yolov3.pt",  # model.pt path(s)
-    source=ROOT / "data/images",  # file/dir/URL/glob, 0 for webcam
+    weights=ROOT / "best.pt",  # model.pt path(s)
+    source=ROOT / "data/video",  # file/dir/URL/glob, 0 for webcam
     imgsz=320,  # inference size (pixels)
     conf_thres=0.25,  # confidence threshold
     iou_thres=0.45,  # NMS IOU threshold
@@ -268,7 +268,7 @@ def run(
                 det = det[indices]
 
                 # make bboxes to korean string
-                plate_string = read_bboxes(det) if len(det) < 9 else ""
+                #plate_string = read_bboxes(det) if len(det) < 9 else ""
 
                 # Print results
                 for c in det[:, -1].unique():
