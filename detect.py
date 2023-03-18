@@ -54,7 +54,9 @@ from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
-#from utils.detect_utils import read_bboxes
+
+# from utils.detect_utils import read_bboxes
+
 
 @torch.no_grad()
 def run(
@@ -158,16 +160,16 @@ def run(
             torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters()))
         )
     dt, seen = [0.0, 0.0, 0.0], 0
-    
 
     points_x = []
     points_y = []
     num = 0
     for path, im, im0s, vid_cap, s in dataset:
-        
         t1 = time_sync()
         if edge:
-            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose([2, 0, 1])
+            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose(
+                [2, 0, 1]
+            )
 
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -206,7 +208,6 @@ def run(
 
         # secondary nms to drop missing doubled bbox
         if rm_doubled_bboxes:
-
             tmp = (
                 nms(boxes=pred[0][:, :4], scores=pred[0][:, 4], iou_threshold=iou_thres)
                 .detach()
@@ -238,7 +239,7 @@ def run(
         # Process predictions
         for i, det in enumerate(pred):  # per image
             seen += 1
-            
+
             if webcam:  # batch_size >= 1
                 p, im0, frame = path[i], im0s[i].copy(), dataset.count
                 s += f"{i}: "
@@ -268,7 +269,7 @@ def run(
                 det = det[indices]
 
                 # make bboxes to korean string
-                #plate_string = read_bboxes(det) if len(det) < 9 else ""
+                # plate_string = read_bboxes(det) if len(det) < 9 else ""
 
                 # Print results
                 for c in det[:, -1].unique():
@@ -311,16 +312,16 @@ def run(
             # Stream results
             im0 = annotator.result()
             img_pillow = Image.fromarray(im0)
-            
-            if len(det) != 0 and (i%6)==0:
-                x, y = (det[0][0]+det[0][2])/2,(det[0][1]+det[0][3])/2
+
+            if len(det) != 0 and (i % 6) == 0:
+                x, y = (det[0][0] + det[0][2]) / 2, (det[0][1] + det[0][3]) / 2
                 points_x.append(x)
                 points_y.append(y)
                 num = num + 1
                 for n in range(num):
-                    img_pillow = draw_point(img_pillow, (points_x[n],points_y[n]))
-        
-            #draw.line((0, im.size[1], im.size[0], 0), fill=128)
+                    img_pillow = draw_point(img_pillow, (points_x[n], points_y[n]))
+
+            # draw.line((0, im.size[1], im.size[0], 0), fill=128)
             draw = ImageDraw.Draw(img_pillow)
             draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
             im0 = np.array(img_pillow)
@@ -334,7 +335,7 @@ def run(
                 if dataset.mode == "image":
                     cv2.imwrite(save_path, im0)
                 else:  # 'video' or 'stream'
-                    if vid_path[i] != save_path:# new video
+                    if vid_path[i] != save_path:  # new video
                         points_x = []
                         points_y = []
                         num = 0
@@ -353,7 +354,6 @@ def run(
                         )
                     vid_writer[i].write(im0)
 
-
     # Print results
     t = tuple(x / seen * 1e3 for x in dt)  # speeds per image
     LOGGER.info(
@@ -370,6 +370,7 @@ def run(
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
 
+
 def draw_point(image, point):
     x, y = point
     draw = ImageDraw.Draw(image)
@@ -377,6 +378,7 @@ def draw_point(image, point):
     draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=(0, 0, 255))
 
     return image
+
 
 def parse_opt():
     parser = argparse.ArgumentParser()
