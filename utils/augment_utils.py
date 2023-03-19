@@ -214,6 +214,7 @@ def draw_bbox_on_img(
     img: np.ndarray,
     label: Union[np.ndarray, str],
     color: Union[Tuple[int, int, int], str],
+    transpose: Optional[bool] = False,
 ) -> np.ndarray:
     if isinstance(label, str):
         label = parse_label(label)
@@ -221,6 +222,14 @@ def draw_bbox_on_img(
     label = label_yolo2voc(label, *(img.shape[:2]))
 
     img = Image.fromarray(img)
+
+    if transpose:
+        img = img.transpose((1, 0, 2))
+        label_tr = label.copy()
+        label_tr[:, 0], label_tr[:, 1] = label_tr[:, 1], label_tr[:, 0]
+        label_tr[:, 2], label_tr[:, 3] = label_tr[:, 3], label_tr[:, 2]
+        label = label_tr.copy()
+
     draw = ImageDraw.Draw(img)
 
     for i in range(label.shape[0]):
