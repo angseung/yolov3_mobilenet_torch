@@ -57,6 +57,7 @@ from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
 from utils.detect_utils import read_bboxes, correction_plate
 
+
 @torch.no_grad()
 def run(
     weights=ROOT / "yolov3.pt",  # model.pt path(s)
@@ -161,17 +162,19 @@ def run(
             torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters()))
         )
     dt, seen = [0.0, 0.0, 0.0], 0
-    
-    
+
     points_x = []
     points_y = []
     pages = []
     flag = 0
     num = 0
+
     for page, (path, im, im0s, vid_cap, s) in enumerate(dataset):
         t1 = time_sync()
         if edge:
-            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose([2, 0, 1])
+            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose(
+                [2, 0, 1]
+            )
 
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -263,6 +266,9 @@ def run(
                 plate_string = plate_string
 
             if len(det):
+                if page == 0:
+                    h0 = det[0, 1].detach().cpu().item()
+
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
@@ -272,7 +278,11 @@ def run(
 
                 # make bboxes to korean string
                 if print_string:
-                    plate_string = correction_plate(read_bboxes(det, angular_thresh=30.0)) if len(det) < 9 else ""
+                    plate_string = (
+                        correction_plate(read_bboxes(det, angular_thresh=30.0))
+                        if len(det) < 9
+                        else ""
+                    )
 
                 # Print results
                 for c in det[:, -1].unique():
@@ -315,34 +325,44 @@ def run(
             # Stream results
             im0 = annotator.result()
             img_pillow = Image.fromarray(im0)
+
             if len(det) != 0:
-                if (page%6)==0:
-                    x, y = (det[0][0]+det[0][2])/2,(det[0][1]+det[0][3])/2
+                if (page % 6) == 0:
+                    x, y = (det[0][0] + det[0][2]) / 2, (det[0][1] + det[0][3]) / 2
                     points_x.append(float(x.item()))
                     points_y.append(float(y.item()))
                     pages.append(float(page))
                     num = num + 1
+
                 for n in range(num):
-                    img_pillow = draw_point(img_pillow, (points_x[n],points_y[n]))
-            
-            for y in range(len(points_y)-1):
-                c = (points_y[y+1]-points_y[y])/(pages[y+1]-pages[y])
-                if abs(c)>20:
-                # if (points_x[y+1]-points_x[y])==0:
-                #     c = 0
-                # else:
-                #     c = (points_y[y+1]-points_y[y])/(points_x[y+1]-points_x[y])
-                # print(c)
-                # if abs(c)>0.4:
+                    img_pillow = draw_point(img_pillow, (points_x[n], points_y[n]))
+
+            interval_of_frame = 1 / 6
+
+            for y in range(len(points_y) - 1):
+                # c = (points_y[y + 1] - points_y[y]) / (pages[y + 1] - pages[y])
+                c = (points_y[y + 1] - points_y[y]) / (interval_of_frame * h0)
+
+                if abs(c) > 20:
+                    # if (points_x[y+1]-points_x[y])==0:
+                    #     c = 0
+                    # else:
+                    #     c = (points_y[y+1]-points_y[y])/(points_x[y+1]-points_x[y])
+                    # print(c)
+                    # if abs(c)>0.4:
                     flag = 1
+
                 else:
                     flag = 0
+
             warn = Image.open("warning.jpg")
             draw = ImageDraw.Draw(img_pillow)
-            if flag==1:
+
+            if flag == 1:
                 draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
-                img_pillow.paste(im = warn,box =(60,70))
+                img_pillow.paste(im=warn, box=(60, 70))
                 im0 = np.array(img_pillow)
+
             else:
                 draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
                 im0 = np.array(img_pillow)
@@ -355,6 +375,7 @@ def run(
             if save_img:
                 if dataset.mode == "image":
                     cv2.imwrite(save_path, im0)
+
                 else:  # 'video' or 'stream'
                     if vid_path[i] != save_path:  # new video
                         # with open('listfile'+str(page)+'.csv', 'w', newline='') as f:
@@ -368,15 +389,19 @@ def run(
                         flag = 0
                         num = 0
                         vid_path[i] = save_path
+
                         if isinstance(vid_writer[i], cv2.VideoWriter):
                             vid_writer[i].release()  # release previous video writer
+
                         if vid_cap:  # video
                             fps = vid_cap.get(cv2.CAP_PROP_FPS)
                             w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                             h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
                         else:  # stream
                             fps, w, h = 30, im0.shape[1], im0.shape[0]
                             save_path += ".mp4"
+
                         vid_writer[i] = cv2.VideoWriter(
                             save_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h)
                         )
@@ -398,6 +423,7 @@ def run(
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
 
+
 def draw_point(image, point):
     x, y = point
     draw = ImageDraw.Draw(image)
@@ -405,6 +431,7 @@ def draw_point(image, point):
     draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=(0, 0, 255))
 
     return image
+
 
 def parse_opt():
     parser = argparse.ArgumentParser()
