@@ -31,7 +31,7 @@ for n in name:
     m_change = []
     h0 = height[0] // 2
 
-    xtick = np.array(range(len(height))) * interval_of_frame
+    xtick = np.array(range(1, len(height) + 1)) * interval_of_frame
 
     for i in range(len(xpoint) - 1):
         c = abs(height[i + 1] - height[i]) / h0
