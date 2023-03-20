@@ -1,4 +1,5 @@
 import csv
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -30,8 +31,10 @@ for n in name:
     m_change = []
     h0 = height[0] // 2
 
+    xtick = np.array(range(len(height))) * interval_of_frame
+
     for i in range(len(xpoint) - 1):
-        c = abs(height[i + 1] - height[i]) / (h0)
+        c = abs(height[i + 1] - height[i]) / h0
         # if abs(c)>20:
         #     print("warning")
         xy_change.append(c)
@@ -41,8 +44,8 @@ for n in name:
     # plt.plot(xpoint,ypoint)
     # plt.show()
 
-    plt.plot(m_change, linestyle="dotted")
-    plt.plot(xy_change)
+    plt.plot(xtick, m_change, linestyle="dotted")
+    plt.plot(xtick, xy_change)
     plt.grid(True)
     plt.ylim([0, 1])
     plt.show()
