@@ -16,6 +16,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+import csv
 
 import cv2
 import numpy as np
@@ -54,14 +55,12 @@ from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
-
-# from utils.detect_utils import read_bboxes
-
+from utils.detect_utils import read_bboxes, correction_plate
 
 @torch.no_grad()
 def run(
-    weights=ROOT / "best.pt",  # model.pt path(s)
-    source=ROOT / "data/video",  # file/dir/URL/glob, 0 for webcam
+    weights=ROOT / "yolov3.pt",  # model.pt path(s)
+    source=ROOT / "data/images",  # file/dir/URL/glob, 0 for webcam
     imgsz=320,  # inference size (pixels)
     conf_thres=0.25,  # confidence threshold
     iou_thres=0.45,  # NMS IOU threshold
@@ -90,10 +89,13 @@ def run(
     rm_doubled_bboxes=False,
     use_soft=False,
     edge=False,
+    print_string=False,
 ):
     assert not (
         normalize and gray
     )  # select gray or normalize. when selected both, escapes.
+
+    plate_string = ""
 
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
@@ -124,7 +126,6 @@ def run(
     imgsz = check_img_size(imgsz, s=stride)  # check image size
     transform_normalize = normalizer()
     transform_to_gray = to_grayscale(num_output_channels=3)
-    plate_string = ""
 
     # Mapping class index to real value for yper data
     if len(names) == 84:
@@ -160,16 +161,17 @@ def run(
             torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters()))
         )
     dt, seen = [0.0, 0.0, 0.0], 0
-
+    
+    
     points_x = []
     points_y = []
+    pages = []
+    flag = 0
     num = 0
-    for path, im, im0s, vid_cap, s in dataset:
+    for page, (path, im, im0s, vid_cap, s) in enumerate(dataset):
         t1 = time_sync()
         if edge:
-            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose(
-                [2, 0, 1]
-            )
+            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose([2, 0, 1])
 
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -208,6 +210,7 @@ def run(
 
         # secondary nms to drop missing doubled bbox
         if rm_doubled_bboxes:
+
             tmp = (
                 nms(boxes=pred[0][:, :4], scores=pred[0][:, 4], iou_threshold=iou_thres)
                 .detach()
@@ -239,7 +242,6 @@ def run(
         # Process predictions
         for i, det in enumerate(pred):  # per image
             seen += 1
-
             if webcam:  # batch_size >= 1
                 p, im0, frame = path[i], im0s[i].copy(), dataset.count
                 s += f"{i}: "
@@ -257,7 +259,7 @@ def run(
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
 
             # for video detect applications...
-            if Path(source).suffix[1:] in VID_FORMATS and i >= 1:
+            if Path(source).suffix[1:] in VID_FORMATS and i >= 1 and print_string:
                 plate_string = plate_string
 
             if len(det):
@@ -269,7 +271,8 @@ def run(
                 det = det[indices]
 
                 # make bboxes to korean string
-                # plate_string = read_bboxes(det) if len(det) < 9 else ""
+                if print_string:
+                    plate_string = correction_plate(read_bboxes(det, angular_thresh=30.0)) if len(det) < 9 else ""
 
                 # Print results
                 for c in det[:, -1].unique():
@@ -312,19 +315,37 @@ def run(
             # Stream results
             im0 = annotator.result()
             img_pillow = Image.fromarray(im0)
-
-            if len(det) != 0 and (i % 6) == 0:
-                x, y = (det[0][0] + det[0][2]) / 2, (det[0][1] + det[0][3]) / 2
-                points_x.append(x)
-                points_y.append(y)
-                num = num + 1
+            if len(det) != 0:
+                if (page%6)==0:
+                    x, y = (det[0][0]+det[0][2])/2,(det[0][1]+det[0][3])/2
+                    points_x.append(float(x.item()))
+                    points_y.append(float(y.item()))
+                    pages.append(float(page))
+                    num = num + 1
                 for n in range(num):
-                    img_pillow = draw_point(img_pillow, (points_x[n], points_y[n]))
-
-            # draw.line((0, im.size[1], im.size[0], 0), fill=128)
+                    img_pillow = draw_point(img_pillow, (points_x[n],points_y[n]))
+            
+            for y in range(len(points_y)-1):
+                c = (points_y[y+1]-points_y[y])/(pages[y+1]-pages[y])
+                if abs(c)>20:
+                # if (points_x[y+1]-points_x[y])==0:
+                #     c = 0
+                # else:
+                #     c = (points_y[y+1]-points_y[y])/(points_x[y+1]-points_x[y])
+                # print(c)
+                # if abs(c)>0.4:
+                    flag = 1
+                else:
+                    flag = 0
+            warn = Image.open("warning.jpg")
             draw = ImageDraw.Draw(img_pillow)
-            draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
-            im0 = np.array(img_pillow)
+            if flag==1:
+                draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
+                img_pillow.paste(im = warn,box =(60,70))
+                im0 = np.array(img_pillow)
+            else:
+                draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
+                im0 = np.array(img_pillow)
 
             if view_img:
                 cv2.imshow(str(p), im0)
@@ -336,8 +357,15 @@ def run(
                     cv2.imwrite(save_path, im0)
                 else:  # 'video' or 'stream'
                     if vid_path[i] != save_path:  # new video
+                        # with open('listfile'+str(page)+'.csv', 'w', newline='') as f:
+                        #     writer = csv.writer(f)
+                        #     writer.writerow(points_x)
+                        #     writer.writerow(points_y)
+                        #     writer.writerow(pages)
                         points_x = []
                         points_y = []
+                        pages = []
+                        flag = 0
                         num = 0
                         vid_path[i] = save_path
                         if isinstance(vid_writer[i], cv2.VideoWriter):
@@ -370,7 +398,6 @@ def run(
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
 
-
 def draw_point(image, point):
     x, y = point
     draw = ImageDraw.Draw(image)
@@ -378,7 +405,6 @@ def draw_point(image, point):
     draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=(0, 0, 255))
 
     return image
-
 
 def parse_opt():
     parser = argparse.ArgumentParser()
@@ -405,6 +431,9 @@ def parse_opt():
     )
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"
+    )
+    parser.add_argument(
+        "--print-string", action="store_true", help="apply normalizer or not"
     )
     parser.add_argument(
         "--rm-doubled-bboxes", action="store_true", help="use additional nms"
