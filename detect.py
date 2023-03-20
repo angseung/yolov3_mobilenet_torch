@@ -165,6 +165,8 @@ def run(
 
     points_x = []
     points_y = []
+    width_list = []
+    height_list = []
     pages = []
     flag = 0
     num = 0
@@ -266,11 +268,12 @@ def run(
                 plate_string = plate_string
 
             if len(det):
-                if page == 0:
-                    h0 = det[0, 1].detach().cpu().item()
 
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+
+                if page == 0:
+                    h0 = (det[0, 3] - det[0, 1]).detach().cpu().item() // 2
 
                 # Reorder: number first, Korean last
                 _, indices = torch.sort(det[:, 5], descending=True)
@@ -326,24 +329,33 @@ def run(
             im0 = annotator.result()
             img_pillow = Image.fromarray(im0)
 
+            source_fps = 30
+            target_fps = 10
+            frame_interval = source_fps // target_fps
+
             if len(det) != 0:
-                if (page % 6) == 0:
-                    x, y = (det[0][0] + det[0][2]) / 2, (det[0][1] + det[0][3]) / 2
+                if (page % frame_interval) == 0:
+                    x, y = (det[0][0] + det[0][2]) // 2, (det[0][1] + det[0][3]) // 2
                     points_x.append(float(x.item()))
                     points_y.append(float(y.item()))
+                    width_list.append(float(det[0][2] - float(x.item())))
+                    height_list.append(float(det[0][3] - float(y.item())))
                     pages.append(float(page))
                     num = num + 1
 
-                for n in range(num):
-                    img_pillow = draw_point(img_pillow, (points_x[n], points_y[n]))
+                # for n in range(num):
+                #     img_pillow = draw_point(img_pillow, (points_x[n], points_y[n]))
 
-            interval_of_frame = 1 / 6
+            for x_, y_ in zip(points_x, points_y):
+                img_pillow = draw_point(img_pillow, (x_, y_))
+
+            interval_of_frame = 1 / frame_interval
 
             for y in range(len(points_y) - 1):
                 # c = (points_y[y + 1] - points_y[y]) / (pages[y + 1] - pages[y])
-                c = (points_y[y + 1] - points_y[y]) / (interval_of_frame * h0)
+                c = (points_y[y + 1] - points_y[y]) / h0
 
-                if abs(c) > 20:
+                if abs(c) > 0.2:
                     # if (points_x[y+1]-points_x[y])==0:
                     #     c = 0
                     # else:
@@ -355,7 +367,7 @@ def run(
                 else:
                     flag = 0
 
-            warn = Image.open("warning.jpg")
+            warn = Image.open("warning.png")
             draw = ImageDraw.Draw(img_pillow)
 
             if flag == 1:
@@ -378,13 +390,17 @@ def run(
 
                 else:  # 'video' or 'stream'
                     if vid_path[i] != save_path:  # new video
-                        # with open('listfile'+str(page)+'.csv', 'w', newline='') as f:
-                        #     writer = csv.writer(f)
-                        #     writer.writerow(points_x)
-                        #     writer.writerow(points_y)
-                        #     writer.writerow(pages)
+                        with open('listfile'+str(page)+'.csv', 'w', newline='') as f:
+                            writer = csv.writer(f)
+                            writer.writerow(points_x)
+                            writer.writerow(points_y)
+                            writer.writerow(width_list)
+                            writer.writerow(height_list)
+                            writer.writerow(pages)
                         points_x = []
                         points_y = []
+                        width_list = []
+                        height_list = []
                         pages = []
                         flag = 0
                         num = 0

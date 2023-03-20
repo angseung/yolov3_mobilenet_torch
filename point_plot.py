@@ -2,7 +2,13 @@ import csv
 import pandas as pd
 import matplotlib.pyplot as plt
 
-name = [159, 275, 363, 462, 560]
+name = [116, 217]
+
+source_fps = 30
+target_fps = 10
+frame_interval = source_fps // target_fps
+interval_of_frame = 1 / frame_interval
+
 for n in name:
     with open("listfile" + str(n) + ".csv", "r", encoding="utf-8") as f:
         rdr = csv.reader(f)
@@ -11,6 +17,10 @@ for n in name:
                 xpoint = list(map(float, line))
             elif i == 1:
                 ypoint = list(map(float, line))
+            if i == 2:
+                width = list(map(float, line))
+            elif i == 3:
+                height = list(map(float, line))
             else:
                 page = list(map(float, line))
 
@@ -18,9 +28,10 @@ for n in name:
     xy_change = []
     change = []
     m_change = []
+    h0 = height[0] // 2
 
     for i in range(len(xpoint) - 1):
-        c = (ypoint[i + 1] - ypoint[i]) / (page[i + 1] - page[i])
+        c = abs(height[i + 1] - height[i]) / (h0)
         # if abs(c)>20:
         #     print("warning")
         xy_change.append(c)
@@ -32,4 +43,6 @@ for n in name:
 
     plt.plot(m_change, linestyle="dotted")
     plt.plot(xy_change)
+    plt.grid(True)
+    plt.ylim([0, 1])
     plt.show()
