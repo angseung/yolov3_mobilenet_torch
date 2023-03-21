@@ -186,6 +186,7 @@ def run(
     pages = []
     flag = 0
     num = 0
+
     warn = Image.open("warning.png")
 
     for page, (path, im, im0s, vid_cap, s) in enumerate(dataset):
@@ -285,7 +286,6 @@ def run(
                 plate_string = plate_string
 
             if len(det):
-
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
@@ -347,7 +347,7 @@ def run(
             img_pillow = Image.fromarray(im0)
 
             source_fps = 30
-            target_fps = 10
+            target_fps = 5
             frame_interval = source_fps // target_fps
 
             if len(det) != 0:
