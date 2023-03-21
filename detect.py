@@ -182,6 +182,7 @@ def run(
     points_y = []
     width_list = []
     height_list = []
+    h0_list = []
     pages = []
     flag = 0
     num = 0
@@ -357,15 +358,16 @@ def run(
                     width_list.append(float(det[0][2] - float(x.item())))
                     height_list.append(float(det[0][3] - float(y.item())))
                     pages.append(float(page))
+                    h0_list.append(float(h0))
                     num = num + 1
 
             for x_, y_ in zip(points_x, points_y):
                 img_pillow = draw_point(img_pillow, (x_, y_))
 
             for y in range(len(points_y) - 1):
-                c = (points_y[y + 1] - points_y[y]) / h0
+                acc = (points_y[y + 1] - points_y[y]) / h0
 
-                if abs(c) > 0.2:
+                if abs(acc) > 0.2:
                     flag = 1
 
                 else:
@@ -409,6 +411,8 @@ def run(
                             writer.writerow(width_list)
                             writer.writerow(height_list)
                             writer.writerow(pages)
+                            writer.writerow(h0_list)
+
                         points_x = []
                         points_y = []
                         width_list = []

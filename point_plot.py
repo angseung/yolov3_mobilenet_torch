@@ -35,21 +35,22 @@ for fname in os.listdir(csv_dir):
             elif i == 4:
                 page = list(map(float, line))
 
+            elif i == 5:
+                h0_list = list(map(float, line))
+
     xxy_change = []
     xy_change = []
     change = []
     m_change = []
-    h0 = height[0] // 2
+    h0 = h0_list[0]
 
     xtick = np.array(range(1, len(height) + 1)) * interval_of_frame
 
     for i in range(len(xpoint) - 1):
         c = abs(height[i + 1] - height[i]) / h0
-        # if abs(c)>20:
-        #     print("warning")
         xy_change.append(c)
-        m = abs(max(xy_change) - min(xy_change))
-        m_change.append(m)
+        # m = abs(max(xy_change) - min(xy_change))
+        # m_change.append(m)
 
     # fig1 = plt.figure()
     # plt.plot(xtick[1:], m_change, linestyle="dotted")
