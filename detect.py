@@ -106,7 +106,7 @@ def run(
     use_soft=False,
     edge=False,
     print_string=False,
-    fps=10,
+    device_fps=10,
 ):
     assert not (
         normalize and gray
@@ -350,8 +350,7 @@ def run(
             img_pillow = Image.fromarray(im0)
 
             source_fps = 30
-            target_fps = 5
-            frame_interval = source_fps // target_fps
+            frame_interval = source_fps // device_fps
 
             if len(det) != 0:
                 if (page % frame_interval) == 0:
@@ -407,7 +406,7 @@ def run(
                             path.split("\\")[-1] if is_windows else path.split("/")[-1]
                         )
                         with open(
-                            f"{csv_target_dir}/{curr_fname[:-4]}_{target_fps}fps.csv", "w", newline=""
+                            f"{csv_target_dir}/{curr_fname[:-4]}_{device_fps}fps.csv", "w", newline=""
                         ) as f:
                             writer = csv.writer(f)
                             writer.writerow(points_x)
@@ -475,13 +474,13 @@ def parse_opt():
     parser.add_argument(
         "--weights",
         type=str,
-        default=ROOT / "models/best.pt",
+        default=ROOT / "models/fall-down.pt",
         help="model path(s)",
     )
     parser.add_argument(
         "--source",
         type=str,
-        default=ROOT / "data/video",
+        default=ROOT / "data/falldown",
         help="file/dir/URL/glob, 0 for webcam",
     )
     parser.add_argument(
@@ -490,14 +489,14 @@ def parse_opt():
         "--img-size",
         nargs="+",
         type=int,
-        default=[320],
+        default=[640],
         help="inference size h,w",
     )
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"
     )
     parser.add_argument(
-        "--fps", type=int, default=10, help="device fps"
+        "--device-fps", type=int, default=10, help="device fps"
     )
     parser.add_argument(
         "--print-string", action="store_true", help="apply normalizer or not"
