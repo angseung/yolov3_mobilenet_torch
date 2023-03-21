@@ -235,7 +235,6 @@ def run(
 
         # secondary nms to drop missing doubled bbox
         if rm_doubled_bboxes:
-
             tmp = (
                 nms(boxes=pred[0][:, :4], scores=pred[0][:, 4], iou_threshold=iou_thres)
                 .detach()
@@ -406,7 +405,9 @@ def run(
                             path.split("\\")[-1] if is_windows else path.split("/")[-1]
                         )
                         with open(
-                            f"{csv_target_dir}/{curr_fname[:-4]}_{device_fps}fps.csv", "w", newline=""
+                            f"{csv_target_dir}/{curr_fname[:-4]}_{device_fps}fps.csv",
+                            "w",
+                            newline="",
                         ) as f:
                             writer = csv.writer(f)
                             writer.writerow(points_x)
@@ -495,9 +496,7 @@ def parse_opt():
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"
     )
-    parser.add_argument(
-        "--device-fps", type=int, default=10, help="device fps"
-    )
+    parser.add_argument("--device-fps", type=int, default=10, help="device fps")
     parser.add_argument(
         "--print-string", action="store_true", help="apply normalizer or not"
     )
