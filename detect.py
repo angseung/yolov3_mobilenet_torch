@@ -186,6 +186,7 @@ def run(
     pages = []
     flag = 0
     num = 0
+    h0_is_determined = False
 
     warn = Image.open("warning.png")
 
@@ -289,7 +290,7 @@ def run(
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
-                if page == 0:
+                if not h0_is_determined:
                     h0 = (det[0, 3] - det[0, 1]).detach().cpu().item() // 2
 
                 # Reorder: number first, Korean last
@@ -399,6 +400,7 @@ def run(
                         os.makedirs(csv_target_dir)
 
                     if vid_path[i] != save_path:  # new video
+                        h0_is_determined = False
                         curr_fname = (
                             path.split("\\")[-1] if is_windows else path.split("/")[-1]
                         )
