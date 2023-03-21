@@ -292,6 +292,7 @@ def run(
 
                 if not h0_is_determined:
                     h0 = (det[0, 3] - det[0, 1]).detach().cpu().item() // 2
+                    h0_is_determined = True
 
                 # Reorder: number first, Korean last
                 _, indices = torch.sort(det[:, 5], descending=True)
