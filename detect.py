@@ -106,6 +106,7 @@ def run(
     use_soft=False,
     edge=False,
     print_string=False,
+    fps=10,
 ):
     assert not (
         normalize and gray
@@ -493,6 +494,9 @@ def parse_opt():
     )
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"
+    )
+    parser.add_argument(
+        "--fps", type=int, default=10, help="device fps"
     )
     parser.add_argument(
         "--print-string", action="store_true", help="apply normalizer or not"
