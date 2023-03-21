@@ -256,3 +256,4 @@ fabric.properties
 *.whl
 torch2
 *.csv
+outputs

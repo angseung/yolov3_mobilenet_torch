@@ -1,10 +1,7 @@
 import os
 import csv
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-
-name = [116, 217]
 
 source_fps = 30
 target_fps = 10
@@ -17,7 +14,7 @@ if not os.path.isdir(f"{csv_dir}/{fig_target_dir}"):
     os.makedirs(f"{csv_dir}/{fig_target_dir}")
 
 for fname in os.listdir(csv_dir):
-    if "csv" not in fname:
+    if "csv" not in fname or str(target_fps) not in fname:
         continue
 
     with open(f"{csv_dir}/{fname}", "r", encoding="utf-8") as f:
@@ -61,7 +58,7 @@ for fname in os.listdir(csv_dir):
     # plt.grid(True)
     # plt.show()
 
-    fig2 = plt.figure()
+    fig = plt.figure()
     plt.plot(xtick[1:], xy_change)
     plt.axhline(y=0.2, linestyle="dashed")
     plt.grid(True)
@@ -69,5 +66,5 @@ for fname in os.listdir(csv_dir):
     plt.ylabel("differential of bbox height (abs)")
     plt.ylim([0, 1])
     plt.title(f"{fname}")
-    plt.show()
-    plt.savefig(f"{csv_dir}/{fig_target_dir}/{fname}.png", dpi=150)
+    # plt.show()
+    fig.savefig(f"{csv_dir}/{fig_target_dir}/{fname[:-4]}.png", dpi=150)

@@ -72,6 +72,7 @@ elif "Linux" in curr_system:
 else:
     raise Exception
 
+
 @torch.no_grad()
 def run(
     weights=ROOT / "yolov3.pt",  # model.pt path(s)
@@ -184,6 +185,7 @@ def run(
     pages = []
     flag = 0
     num = 0
+    warn = Image.open("warning.png")
 
     for page, (path, im, im0s, vid_cap, s) in enumerate(dataset):
         t1 = time_sync()
@@ -344,7 +346,7 @@ def run(
             img_pillow = Image.fromarray(im0)
 
             source_fps = 30
-            target_fps = 10
+            target_fps = 5
             frame_interval = source_fps // target_fps
 
             if len(det) != 0:
@@ -357,31 +359,18 @@ def run(
                     pages.append(float(page))
                     num = num + 1
 
-                # for n in range(num):
-                #     img_pillow = draw_point(img_pillow, (points_x[n], points_y[n]))
-
             for x_, y_ in zip(points_x, points_y):
                 img_pillow = draw_point(img_pillow, (x_, y_))
 
-            interval_of_frame = 1 / frame_interval
-
             for y in range(len(points_y) - 1):
-                # c = (points_y[y + 1] - points_y[y]) / (pages[y + 1] - pages[y])
                 c = (points_y[y + 1] - points_y[y]) / h0
 
                 if abs(c) > 0.2:
-                    # if (points_x[y+1]-points_x[y])==0:
-                    #     c = 0
-                    # else:
-                    #     c = (points_y[y+1]-points_y[y])/(points_x[y+1]-points_x[y])
-                    # print(c)
-                    # if abs(c)>0.4:
                     flag = 1
 
                 else:
                     flag = 0
 
-            warn = Image.open("warning.png")
             draw = ImageDraw.Draw(img_pillow)
 
             if flag == 1:
@@ -408,8 +397,12 @@ def run(
                         os.makedirs(csv_target_dir)
 
                     if vid_path[i] != save_path:  # new video
-                        curr_fname = path.split("\\")[-1] if is_windows else path.split("/")[-1]
-                        with open(f"{csv_target_dir}/{curr_fname[:-4]}.csv", 'w', newline='') as f:
+                        curr_fname = (
+                            path.split("\\")[-1] if is_windows else path.split("/")[-1]
+                        )
+                        with open(
+                            f"{csv_target_dir}/{curr_fname[:-4]}_{target_fps}fps.csv", "w", newline=""
+                        ) as f:
                             writer = csv.writer(f)
                             writer.writerow(points_x)
                             writer.writerow(points_y)
