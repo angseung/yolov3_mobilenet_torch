@@ -1,3 +1,4 @@
+import os
 import csv
 import numpy as np
 import pandas as pd
@@ -8,21 +9,33 @@ name = [116, 217]
 source_fps = 30
 target_fps = 10
 frame_interval = source_fps // target_fps
-interval_of_frame = 1 / frame_interval
+interval_of_frame = 1 / target_fps
 
-for n in name:
-    with open("listfile" + str(n) + ".csv", "r", encoding="utf-8") as f:
+csv_dir = "outputs"
+fig_target_dir = "figures"
+if not os.path.isdir(f"{csv_dir}/{fig_target_dir}"):
+    os.makedirs(f"{csv_dir}/{fig_target_dir}")
+
+for fname in os.listdir(csv_dir):
+    if "csv" not in fname:
+        continue
+
+    with open(f"{csv_dir}/{fname}", "r", encoding="utf-8") as f:
         rdr = csv.reader(f)
         for i, line in enumerate(rdr):
             if i == 0:
                 xpoint = list(map(float, line))
+
             elif i == 1:
                 ypoint = list(map(float, line))
-            if i == 2:
+
+            elif i == 2:
                 width = list(map(float, line))
+
             elif i == 3:
                 height = list(map(float, line))
-            else:
+
+            elif i == 4:
                 page = list(map(float, line))
 
     xxy_change = []
@@ -41,11 +54,20 @@ for n in name:
         m = abs(max(xy_change) - min(xy_change))
         m_change.append(m)
 
-    # plt.plot(xpoint,ypoint)
+    # fig1 = plt.figure()
+    # plt.plot(xtick[1:], m_change, linestyle="dotted")
+    # plt.axhline(y=0.2, linestyle="dashed")
+    # plt.ylim([0, 1])
+    # plt.grid(True)
     # plt.show()
 
-    plt.plot(xtick, m_change, linestyle="dotted")
-    plt.plot(xtick, xy_change)
+    fig2 = plt.figure()
+    plt.plot(xtick[1:], xy_change)
+    plt.axhline(y=0.2, linestyle="dashed")
     plt.grid(True)
+    plt.xlabel("time (s)")
+    plt.ylabel("differential of bbox height (abs)")
     plt.ylim([0, 1])
+    plt.title(f"{fname}")
     plt.show()
+    plt.savefig(f"{csv_dir}/{fig_target_dir}/{fname}.png", dpi=150)

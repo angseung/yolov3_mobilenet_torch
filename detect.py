@@ -14,6 +14,7 @@ Usage:
 
 import argparse
 import os
+import platform
 import sys
 from pathlib import Path
 import csv
@@ -57,6 +58,19 @@ from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
 from utils.detect_utils import read_bboxes, correction_plate
 
+is_windows = False
+is_linux = False
+is_darwin = False
+curr_system = platform.platform()
+
+if "Windows" in curr_system:
+    is_windows = True
+elif "Darwin" in curr_system:
+    is_darwin = True
+elif "Linux" in curr_system:
+    is_linux = True
+else:
+    raise Exception
 
 @torch.no_grad()
 def run(
@@ -389,8 +403,13 @@ def run(
                     cv2.imwrite(save_path, im0)
 
                 else:  # 'video' or 'stream'
+                    csv_target_dir = "outputs"
+                    if not os.path.isdir(csv_target_dir):
+                        os.makedirs(csv_target_dir)
+
                     if vid_path[i] != save_path:  # new video
-                        with open('listfile'+str(page)+'.csv', 'w', newline='') as f:
+                        curr_fname = path.split("\\")[-1] if is_windows else path.split("/")[-1]
+                        with open(f"{csv_target_dir}/{curr_fname[:-4]}.csv", 'w', newline='') as f:
                             writer = csv.writer(f)
                             writer.writerow(points_x)
                             writer.writerow(points_y)

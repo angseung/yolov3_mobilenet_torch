@@ -255,3 +255,4 @@ fabric.properties
 *.tar.gz
 *.whl
 torch2
+*.csv
