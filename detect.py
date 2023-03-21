@@ -347,7 +347,7 @@ def run(
             img_pillow = Image.fromarray(im0)
 
             source_fps = 30
-            target_fps = 5
+            target_fps = 10
             frame_interval = source_fps // target_fps
 
             if len(det) != 0:
@@ -365,7 +365,7 @@ def run(
                 img_pillow = draw_point(img_pillow, (x_, y_))
 
             for y in range(len(points_y) - 1):
-                acc = (points_y[y + 1] - points_y[y]) / h0
+                acc = (height_list[y + 1] - height_list[y]) / h0
 
                 if abs(acc) > 0.2:
                     flag = 1
