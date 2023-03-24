@@ -4,6 +4,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 import numpy as np
 import cv2
+from matplotlib import pyplot as plt
 
 
 def parse_label(fname: str) -> np.ndarray:
@@ -214,11 +215,21 @@ def draw_bbox_on_img(
     img: np.ndarray,
     label: Union[np.ndarray, str],
     color: Union[Tuple[int, int, int], str],
+    transpose: Optional[bool] = False,
 ) -> np.ndarray:
     if isinstance(label, str):
-        label = parse_label(label)
+        label = parse_label(label)  # label must be np.ndarray
 
-    label = label_yolo2voc(label, *(img.shape[:2]))
+    # if label is yolo format
+    if label[0, 0] < 1.0:
+        label = label_yolo2voc(label, *(img.shape[:2]))
+
+    if transpose:
+        img = img.transpose(1, 0, 2)
+        label_tr = label.copy()
+        label_tr[:, 1], label_tr[:, 2] = label[:, 2], label[:, 1]
+        label_tr[:, 3], label_tr[:, 4] = label[:, 4], label[:, 3]
+        label = label_tr.copy()
 
     img = Image.fromarray(img)
     draw = ImageDraw.Draw(img)
@@ -377,5 +388,11 @@ def auto_canny(
 
 
 if __name__ == "__main__":
-    a = np.zeros((155, 325, 3))
-    b = random_resize(a)
+    base_dir = "../data/thermal2"
+    fname = "frame_00185_1"
+    label = parse_label(f"{base_dir}/labels/train/{fname}.txt")
+    img = cv2.imread(f"{base_dir}/images/train/{fname}.jpg")
+
+    img = draw_bbox_on_img(img, label, color=(255, 255, 255), transpose=True)
+    plt.imshow(img)
+    plt.show()
