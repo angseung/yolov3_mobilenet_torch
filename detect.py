@@ -89,10 +89,15 @@ def run(
     use_soft=False,
     edge=False,
     print_string=False,
+    compile_model=False,
 ):
     assert not (
         normalize and gray
     )  # select gray or normalize. when selected both, escapes.
+
+    # disable torch.compile if there is not any GPU
+    if compile_model and not torch.cuda.is_available():
+        compile_model = False
 
     plate_string = ""
 
@@ -118,6 +123,10 @@ def run(
         print(f"loading best scored model, {best_epoch}th...")
 
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
+
+    if compile_model:
+        model.model = torch.compile(model.model)
+
     stride, names, pt, jit, onnx = (
         model.stride,
         model.names,
@@ -378,6 +387,9 @@ def parse_opt():
         type=int,
         default=[320],
         help="inference size h,w",
+    )
+    parser.add_argument(
+        "--compile-model", action="store_true", help="compile model (GPU ONLY)"
     )
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"
