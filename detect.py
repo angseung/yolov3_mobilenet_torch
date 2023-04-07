@@ -56,6 +56,7 @@ from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
 from utils.detect_utils import read_bboxes, correction_plate
 
+
 @torch.no_grad()
 def run(
     weights=ROOT / "yolov3.pt",  # model.pt path(s)
@@ -89,10 +90,15 @@ def run(
     use_soft=False,
     edge=False,
     print_string=False,
+    compile_model=False,
 ):
     assert not (
         normalize and gray
     )  # select gray or normalize. when selected both, escapes.
+
+    # disable torch.compile if there is not any GPU
+    if compile_model and not torch.cuda.is_available():
+        compile_model = False
 
     plate_string = ""
 
@@ -112,9 +118,16 @@ def run(
 
     # Load model
     device = select_device(device)
-    best_epoch = torch.load(weights, map_location=device)["epoch"]
-    print(f"loading best scored model, {best_epoch}th...")
+
+    if "yaml" not in weights:
+        best_epoch = torch.load(weights, map_location=device)["epoch"]
+        print(f"loading best scored model, {best_epoch}th...")
+
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
+
+    if compile_model:
+        model.model = torch.compile(model.model)
+
     stride, names, pt, jit, onnx = (
         model.stride,
         model.names,
@@ -163,7 +176,9 @@ def run(
     for path, im, im0s, vid_cap, s in dataset:
         t1 = time_sync()
         if edge:
-            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose([2, 0, 1])
+            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose(
+                [2, 0, 1]
+            )
 
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -202,7 +217,6 @@ def run(
 
         # secondary nms to drop missing doubled bbox
         if rm_doubled_bboxes:
-
             tmp = (
                 nms(boxes=pred[0][:, :4], scores=pred[0][:, 4], iou_threshold=iou_thres)
                 .detach()
@@ -264,7 +278,11 @@ def run(
 
                 # make bboxes to korean string
                 if print_string:
-                    plate_string = correction_plate(read_bboxes(det, angular_thresh=30.0)) if len(det) < 9 else ""
+                    plate_string = (
+                        correction_plate(read_bboxes(det, angular_thresh=28.0))
+                        if len(det) < 9
+                        else ""
+                    )
 
                 # Print results
                 for c in det[:, -1].unique():
@@ -375,6 +393,9 @@ def parse_opt():
         type=int,
         default=[320],
         help="inference size h,w",
+    )
+    parser.add_argument(
+        "--compile-model", action="store_true", help="compile model (GPU ONLY)"
     )
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"

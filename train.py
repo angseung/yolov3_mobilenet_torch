@@ -207,7 +207,9 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         )  # report
     else:
         # hyp["anchors"] value was parsed from anchors value in data/hyps/hyp.scratch.yaml
-        model = Model(cfg, ch=in_channel, nc=nc, anchors=hyp.get("anchors")).to(device)  # create
+        model = Model(cfg, ch=in_channel, nc=nc, anchors=hyp.get("anchors")).to(
+            device
+        )  # create
 
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
