@@ -279,7 +279,7 @@ def run(
                 # make bboxes to korean string
                 if print_string:
                     plate_string = (
-                        correction_plate(read_bboxes(det, angular_thresh=30.0))
+                        correction_plate(read_bboxes(det, angular_thresh=28.0))
                         if len(det) < 9
                         else ""
                     )
