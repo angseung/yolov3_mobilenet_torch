@@ -56,6 +56,7 @@ from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
 from utils.detect_utils import read_bboxes, correction_plate
 
+
 @torch.no_grad()
 def run(
     weights=ROOT / "yolov3.pt",  # model.pt path(s)
@@ -175,7 +176,9 @@ def run(
     for path, im, im0s, vid_cap, s in dataset:
         t1 = time_sync()
         if edge:
-            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose([2, 0, 1])
+            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose(
+                [2, 0, 1]
+            )
 
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -214,7 +217,6 @@ def run(
 
         # secondary nms to drop missing doubled bbox
         if rm_doubled_bboxes:
-
             tmp = (
                 nms(boxes=pred[0][:, :4], scores=pred[0][:, 4], iou_threshold=iou_thres)
                 .detach()
@@ -276,7 +278,11 @@ def run(
 
                 # make bboxes to korean string
                 if print_string:
-                    plate_string = correction_plate(read_bboxes(det, angular_thresh=30.0)) if len(det) < 9 else ""
+                    plate_string = (
+                        correction_plate(read_bboxes(det, angular_thresh=30.0))
+                        if len(det) < 9
+                        else ""
+                    )
 
                 # Print results
                 for c in det[:, -1].unique():
