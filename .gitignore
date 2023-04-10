@@ -254,7 +254,6 @@ fabric.properties
 *.txt
 *.tar.gz
 *.whl
-torch2
+torch*/
 outputs
 *.csv
-

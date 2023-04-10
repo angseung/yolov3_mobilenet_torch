@@ -21,6 +21,7 @@ import cv2
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
+import torch.nn as nn
 from torchvision.ops import nms
 import yaml
 from PIL import ImageFont, ImageDraw, Image
@@ -55,6 +56,7 @@ from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
 from utils.detect_utils import read_bboxes, correction_plate
+from utils.quantization_utils import dynamic_quantizer
 
 
 @torch.no_grad()
@@ -91,6 +93,7 @@ def run(
     edge=False,
     print_string=False,
     compile_model=False,
+    quantize_model=False,
 ):
     assert not (
         normalize and gray
@@ -152,6 +155,9 @@ def run(
     )  # half precision only supported by PyTorch on CUDA
     if pt:
         model.model.half() if half else model.model.float()
+
+    if quantize_model:
+        model.model = dynamic_quantizer(model.model, dtype=torch.qint8, layers=[nn.Conv2d])
 
     # Dataloader
     if webcam:
@@ -396,6 +402,9 @@ def parse_opt():
     )
     parser.add_argument(
         "--compile-model", action="store_true", help="compile model (GPU ONLY)"
+    )
+    parser.add_argument(
+        "--quantize-model", action="store_true", help="quantize model (CPU ONLY)"
     )
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"

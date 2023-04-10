@@ -78,7 +78,7 @@ def split_plate_line(
     return bbox_in_first_line, bbox_in_second_line
 
 
-def correction_plate(plate_string: str) -> str:
+def correction_plate(plate_string: str, check_4_digits: Optional[bool] = False) -> str:
     is_region = False
 
     # check length
@@ -107,7 +107,9 @@ def correction_plate(plate_string: str) -> str:
 
         # correct char if car_type is not in [80, 97] (trucks)
         # check this URL for more detail (https://whybrary.mindalive.co.kr/story/?idx=5807476&bmode=view)
-        if curr_char in ["버", "보", "부", "배"] and curr_car_type not in list(range(80, 97 + 1)):
+        if curr_char in ["버", "보", "부", "배"] and curr_car_type not in list(
+            range(80, 97 + 1)
+        ):
             plate_string = plate_string.replace(curr_char, "바")
 
         if curr_char in ["서", "소", "수"]:
@@ -118,5 +120,13 @@ def correction_plate(plate_string: str) -> str:
 
         if curr_char in ["저", "조", "주"]:
             plate_string = plate_string.replace(curr_char, "자")
+
+    # check whether last 4 digits are numbers
+    if check_4_digits:
+        try:
+            int(plate_string[:-4])
+
+        except ValueError:
+            plate_string = ""
 
     return plate_string
