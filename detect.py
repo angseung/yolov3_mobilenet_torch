@@ -157,7 +157,8 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
-        model.model = dynamic_quantizer(model.model, dtype=torch.qint8, layers=[nn.Conv2d])
+        raise NotImplementedError
+        # model.model = dynamic_quantizer(model.model, dtype=torch.qint8, layers=[nn.Conv2d])
 
     # Dataloader
     if webcam:
