@@ -1,81 +1,61 @@
+import platform
 from typing import *
 import torch
 from torch import nn as nn
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
 from torch.ao.nn.quantized import Conv2d as qConv2d
-from torch.ao.quantization import qconfig
+from models.resnet import resnet18 as ResNet18
 
 
-# define a floating point model
-class M(nn.Module):
+class AddModel(nn.Module):
     def __init__(self, quantized=False):
         super().__init__()
-        if quantized:
-            self.conv1 = qConv2d(
-                3, 32, kernel_size=3, stride=1, padding=1, bias=False
-            )  # 224
-            self.conv2 = qConv2d(
-                32, 64, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 112
-            self.conv3 = qConv2d(
-                64, 128, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 56
-            self.conv4 = qConv2d(
-                128, 256, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 28
-            self.conv5 = qConv2d(
-                256, 512, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 14
-            self.conv6 = qConv2d(
-                512, 1024, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 7
+        self.ff = torch.nn.quantized.FloatFunctional()
 
-        else:
-            self.conv1 = nn.Conv2d(
-                3, 32, kernel_size=3, stride=1, padding=1, bias=False
-            )  # 224
-            self.conv2 = nn.Conv2d(
-                32, 64, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 112
-            self.conv3 = nn.Conv2d(
-                64, 128, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 56
-            self.conv4 = nn.Conv2d(
-                128, 256, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 28
-            self.conv5 = nn.Conv2d(
-                256, 512, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 14
-            self.conv6 = nn.Conv2d(
-                512, 1024, kernel_size=3, stride=2, padding=1, bias=False
-            )  # 7
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        y = x.clone()
+        out = self.ff.add(x, y)
 
-        self.avgpool = nn.AvgPool2d(kernel_size=7)
-        self.fc = nn.Linear(1024, 10)
+        return out
+
+
+class M(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        # QuantStub converts tensors from floating point to quantized
+        self.quant = torch.ao.quantization.QuantStub()
+        self.conv = torch.nn.Conv2d(1, 1, 1)
+        # self.bn = torch.nn.BatchNorm2d(1)
+        self.relu = torch.nn.ReLU()
+        # DeQuantStub converts tensors from quantized to floating point
+        self.dequant = torch.ao.quantization.DeQuantStub()
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.conv5(x)
-        x = self.conv6(x)
-        x = self.avgpool(x)
-        x = self.fc(torch.flatten(x, start_dim=1))
-
+        # manually specify where tensors will be converted from floating
+        # point to quantized in the quantized model
+        x = self.quant(x)
+        x = self.conv(x)
+        # x = self.bn(x)
+        x = self.relu(x)
+        # manually specify where tensors will be converted from quantized
+        # to floating point in the quantized model
+        x = self.dequant(x)
         return x
 
 
 class QuantBasicBlock(BasicBlock):
-    f_add = torch.nn.quantized.FloatFunctional()
+    # ff = torch.ao.nn.quantized.FloatFunctional()
+    ff = torch.nn.quantized.FloatFunctional()
+    relu1 = nn.ReLU()
+    relu2 = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
 
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = self.relu1(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
@@ -83,21 +63,24 @@ class QuantBasicBlock(BasicBlock):
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        out = self.f_add.add(out, identity)
-        out = self.relu(out)
+        out = self.ff.add(out, identity)
+        out = self.relu2(out)
 
         return out
 
 
 class QuantBottleNeck(Bottleneck):
-    f_add = torch.nn.quantized.FloatFunctional()
+    # ff = torch.ao.nn.quantized.FloatFunctional()
+    ff = torch.nn.quantized.FloatFunctional()
+    relu1 = nn.ReLU()
+    relu2 = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
 
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = self.relu1(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
@@ -109,8 +92,8 @@ class QuantBottleNeck(Bottleneck):
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        out = self.f_add.add(out, identity)
-        out = self.relu(out)
+        out = self.ff.add(out, identity)
+        out = self.relu2(out)
 
         return out
 
@@ -169,6 +152,11 @@ class QuantModel(nn.Module):
         # DeQuantStub converts tensors from quantized to floating point
         self.dequant = torch.ao.quantization.DeQuantStub()
 
+    def fuse_modules(self, modules_to_fuse: List[Type[nn.Module]]) -> nn.Module:
+        torch.ao.quantization.fuse_modules(self.model, modules_to_fuse=modules_to_fuse, inplace=True)
+
+        return self
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quant(x)
         x = self.model(x)
@@ -179,7 +167,46 @@ class QuantModel(nn.Module):
 
 if __name__ == "__main__":
     # create a model instance
-    model_fp32 = M(quantized=False).to("cpu").eval()
-    model = QuantModel(model=model_fp32)
-    dummy_input = torch.randn(1, 3, 224, 224)
-    dummy_output = model(dummy_input)
+    architecture = platform.uname().machine
+    modules_to_fuse = [nn.Conv2d, nn.BatchNorm2d, nn.ReLU]
+
+    model_fp32 = ResNet18().eval()
+    model_fp32 = torch.quantization.fuse_modules(
+        model_fp32, [["conv1", "bn1", "relu"]], inplace=True
+    )
+
+    for module_name, module in model_fp32.named_children():
+        if "layer" in module_name:
+            for basic_block_name, basic_block in module.named_children():
+                torch.quantization.fuse_modules(
+                    basic_block,
+                    [["conv1", "bn1", "relu1"], ["conv2", "bn2"]],
+                    inplace=True,
+                )
+                for sub_block_name, sub_block in basic_block.named_children():
+                    if sub_block_name == "downsample":
+                        torch.quantization.fuse_modules(
+                            sub_block, [["0", "1"]], inplace=True
+                        )
+
+    model_qint8 = QuantModel(model=model_fp32)
+    model_qint8.qconfig = torch.ao.quantization.get_default_qconfig('x86')
+    # model_fp32_fused = torch.ao.quantization.fuse_modules(model, [['conv', 'relu']])
+    # the model that will observe activation tensors during calibration.
+    torch.ao.quantization.prepare(model_qint8, inplace=True)
+    input_fp32 = torch.randn(1, 3, 224, 224)
+
+    # it calibrates model
+    model_qint8(input_fp32)
+
+    model_int8 = torch.ao.quantization.convert(model_qint8)
+
+    # run the model, relevant calculations will happen in int8
+    res = model_int8(input_fp32)
+
+    # model_fp32 = resnet18().to("cpu").eval()
+    # model_fp32 = AddModel().to("cpu").eval()
+    # model = QuantModel(model=model_fp32)
+    # model = static_quantizer(model=model, configs="x86")
+    # dummy_input = torch.randn(1, 3, 224, 224)
+    # dummy_output = model(dummy_input)
