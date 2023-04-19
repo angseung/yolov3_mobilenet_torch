@@ -3,6 +3,8 @@ import torch
 from torch import nn as nn
 from torch.ao.quantization import quantize_dynamic
 from torch.ao.nn.quantized import Conv2d as qConv2d
+from torch.ao.quantization import qconfig
+
 
 # define a floating point model
 class M(nn.Module):
@@ -53,19 +55,43 @@ def dynamic_quantizer(
 
 
 def static_quantizer(
-        model: nn.Module, configs: Optional = None
+        model: nn.Module, configs: Optional[Union[str, None]] = None, return_prepare: Optional[bool] = False
 ) -> nn.Module:
+    """
+    https://pytorch.org/tutorials/advanced/static_quantization_tutorial.html
+    """
 
-    if configs is not None:
-        raise NotImplementedError
+    if isinstance(configs, str):
+        model.qconfig = torch.ao.quantization.get_default_qconfig(configs)
     else:
         model.qconfig = torch.ao.quantization.default_qconfig
 
-    torch.ao.quantization.prepare(model, inplace=True)
-    torch.ao.quantization.convert(model, inplace=True)
+    model = model.to("cpu")
+    # model_fp32_fused = torch.ao.quantization.fuse_modules(model, [['conv', 'relu']])
+    prepare = torch.ao.quantization.prepare(model)
+    quantized_model = torch.ao.quantization.convert(prepare)
     print('Post Training Quantization: Convert done')
 
-    return model
+    return quantized_model
+
+
+class QuantModel(nn.Module):
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        # QuantStub converts tensors from floating point to quantized
+        self.quant = torch.ao.quantization.QuantStub()
+
+        self.model = model.to("cpu")
+
+        # DeQuantStub converts tensors from quantized to floating point
+        self.dequant = torch.ao.quantization.DeQuantStub()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quant(x)
+        x = self.model(x)
+        x = self.dequant(x)
+
+        return x
 
 
 if __name__ == "__main__":
@@ -92,4 +118,7 @@ if __name__ == "__main__":
 
     # run the model
     input_fp32 = torch.randn(1, 3, 224, 224)
-    res = model_int8(input_fp32)
+    res = model_fp32(input_fp32)
+
+    # model = torch.load("../yolo.pt", map_location="cpu")
+    # model = static_quantizer(model, configs=None)

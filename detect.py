@@ -158,6 +158,8 @@ def run(
 
     if quantize_model:
         # raise NotImplementedError
+        model = model.to("cpu")
+        device = torch.device("cpu")
         model.model = static_quantizer(model.model, configs=None)
 
     # Dataloader
