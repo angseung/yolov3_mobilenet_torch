@@ -163,12 +163,10 @@ class QuantModel(nn.Module):
         # DeQuantStub converts tensors from quantized to floating point
         self.dequant = torch.ao.quantization.DeQuantStub()
 
-    def fuse_modules(self, modules_to_fuse: List[Type[nn.Module]]) -> nn.Module:
+    def fuse_modules(self, modules_to_fuse: List[Type[nn.Module]]):
         torch.ao.quantization.fuse_modules(
             self.model, modules_to_fuse=modules_to_fuse, inplace=True
         )
-
-        return self
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quant(x)
