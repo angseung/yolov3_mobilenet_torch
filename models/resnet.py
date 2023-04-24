@@ -147,6 +147,7 @@ class Bottleneck(nn.Module):
         self.stride = stride
         self.skip_add = nn.quantized.FloatFunctional()
         self.relu2 = nn.ReLU(inplace=True)
+        self.relu3 = nn.ReLU(inplace=True)
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
@@ -157,7 +158,7 @@ class Bottleneck(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.relu(out)
+        out = self.relu2(out)
 
         out = self.conv3(out)
         out = self.bn3(out)
@@ -168,7 +169,7 @@ class Bottleneck(nn.Module):
         # out += identity
         # out = torch.add(identity, out)
         out = self.skip_add.add(identity, out)
-        out = self.relu2(out)
+        out = self.relu3(out)
 
         return out
 
