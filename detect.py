@@ -56,7 +56,7 @@ from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
 from utils.detect_utils import read_bboxes, correction_plate
-from utils.quantization_utils import dynamic_quantizer
+from utils.quantization_utils import static_quantizer
 
 
 @torch.no_grad()
@@ -157,8 +157,10 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
-        raise NotImplementedError
-        # model.model = dynamic_quantizer(model.model, dtype=torch.qint8, layers=[nn.Conv2d])
+        # raise NotImplementedError
+        model = model.to("cpu")
+        device = torch.device("cpu")
+        model.model = static_quantizer(model.model, configs=None)
 
     # Dataloader
     if webcam:
