@@ -1,4 +1,5 @@
 import platform
+import copy
 from typing import *
 import torch
 from torch import nn as nn
@@ -181,8 +182,9 @@ if __name__ == "__main__":
     architecture = platform.uname().machine
     modules_to_fuse = [[nn.Conv2d, nn.BatchNorm2d, nn.ReLU]]
 
-    model_fp32 = ResNet18().eval()
-    # model_fp32 = M().eval()
+    # model_fp32 = ResNet18().eval()
+    model_fp32 = M().eval()
+    model_ori = copy.deepcopy(model_fp32)
 
     # fuse BasicBlock for ResNet18 ONLY
     if "ResNet" in model_fp32.__class__.__name__:
@@ -208,3 +210,19 @@ if __name__ == "__main__":
 
     # run the model, relevant calculations will happen in int8
     res = model_int8(input_fp32)
+    res_fp = model_ori(input_fp32)
+
+    # onnx export test
+    torch.onnx.export(
+        model_ori,
+        input_fp32,
+        "../model_ori.onnx",
+        opset_version=17,
+    )
+
+    torch.onnx.export(
+        model_int8,
+        input_fp32,
+        "../model_int8.onnx",
+        opset_version=17,  # offset <= 11 occurs error
+    )
