@@ -116,8 +116,9 @@ def dynamic_quantizer(
 
 def static_quantizer(
     model: nn.Module,
+    data_to_calibrate: torch.Tensor,
+    layers_to_fuse: List[List[Union[str, Type[nn.Module]]]],
     configs: Optional[Union[str, None]] = None,
-    return_prepare: Optional[bool] = False,
 ) -> nn.Module:
     """
     https://pytorch.org/tutorials/advanced/static_quantization_tutorial.html
@@ -129,8 +130,9 @@ def static_quantizer(
         model.qconfig = torch.ao.quantization.default_qconfig
 
     model = model.to("cpu")
-    # model_fp32_fused = torch.ao.quantization.fuse_modules(model, [['conv', 'relu']])
+    torch.ao.quantization.fuse_modules(model, layers_to_fuse, inplace=True)
     prepare = torch.ao.quantization.prepare(model)
+    prepare(data_to_calibrate)  # calibrates model
     quantized_model = torch.ao.quantization.convert(prepare)
     print("Post Training Quantization: Convert done")
 
@@ -164,11 +166,6 @@ class QuantModel(nn.Module):
         # DeQuantStub converts tensors from quantized to floating point
         self.dequant = torch.ao.quantization.DeQuantStub()
 
-    def fuse_modules(self, modules_to_fuse: List[Type[nn.Module]]):
-        torch.ao.quantization.fuse_modules(
-            self.model, modules_to_fuse=modules_to_fuse, inplace=True
-        )
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quant(x)
         x = self.model(x)
@@ -180,7 +177,6 @@ class QuantModel(nn.Module):
 if __name__ == "__main__":
     # create a model instance
     architecture = platform.uname().machine
-    modules_to_fuse = [[nn.Conv2d, nn.BatchNorm2d, nn.ReLU]]
 
     # model_fp32 = ResNet18().eval()
     model_fp32 = M().eval()
