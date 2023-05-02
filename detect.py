@@ -58,6 +58,7 @@ from utils.augment_utils import auto_canny
 from utils.detect_utils import read_bboxes, correction_plate
 from utils.quantization_utils import static_quantizer
 from utils.get_roi import crop_region_of_plates
+from utils.augmentations import letterbox
 
 
 @torch.no_grad()
@@ -193,16 +194,22 @@ def run(
 
         # insert ROI crop function here...
         if roi_crop:
-            raise NotImplementedError
-            # im = crop_region_of_plates(
-            #     img=im.transpose([1, 2, 0]),
-            #     target_imgsz=320,
-            #     imgsz=None,
-            #     top_only=True,
-            #     img_show_opt=False,
-            # ).transpose([2, 0, 1])
+            # raise NotImplementedError
+            im = crop_region_of_plates(
+                img=im.transpose([1, 2, 0]),
+                target_imgsz=320,
+                imgsz=None,
+                top_only=True,
+                img_show_opt=False,
+            )
 
-        im = torch.from_numpy(im).to(device)
+            # pad img to make square-form
+            im = letterbox(im, new_shape=(320, 320))[0]
+
+            # convert channel first to last and BGR to RGB
+            im = im.transpose((2, 0, 1))[::-1]
+
+        im = torch.from_numpy(im.copy()).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
         if len(im.shape) == 3:
