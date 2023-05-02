@@ -192,9 +192,7 @@ def run(
                 [2, 0, 1]
             )
 
-        # insert ROI crop function here...
         if roi_crop:
-            # raise NotImplementedError
             im = crop_region_of_plates(
                 img=im.transpose([1, 2, 0]),
                 target_imgsz=320,
