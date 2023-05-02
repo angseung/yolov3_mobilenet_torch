@@ -57,6 +57,7 @@ from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
 from utils.detect_utils import read_bboxes, correction_plate
 from utils.quantization_utils import static_quantizer
+from utils.get_roi import crop_region_of_plates
 
 
 @torch.no_grad()
@@ -193,6 +194,7 @@ def run(
         # insert ROI crop function here...
         if roi_crop:
             raise NotImplementedError
+            # im = crop_region_of_plates(img=im, target_imgsz=320, imgsz=None, top_only=True, img_show_opt=False)
 
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
