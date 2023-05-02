@@ -94,6 +94,7 @@ def run(
     print_string=False,
     compile_model=False,
     quantize_model=False,
+    roi_crop=False,
 ):
     assert not (
         normalize and gray
@@ -122,7 +123,7 @@ def run(
     # Load model
     device = select_device(device)
 
-    if "yaml" not in weights:
+    if "yaml" not in str(weights):
         best_epoch = torch.load(weights, map_location=device)["epoch"]
         print(f"loading best scored model, {best_epoch}th...")
 
@@ -188,6 +189,10 @@ def run(
             im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose(
                 [2, 0, 1]
             )
+
+        # insert ROI crop function here...
+        if roi_crop:
+            raise NotImplementedError
 
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -428,6 +433,9 @@ def parse_opt():
     )
     parser.add_argument(
         "--use-soft", action="store_true", help="use soft nms rather than normal nms"
+    )
+    parser.add_argument(
+        "--roi-crop", action="store_true", help="crop input around the roi"
     )
     parser.add_argument(
         "--max-det", type=int, default=1000, help="maximum detections per image"
