@@ -40,7 +40,7 @@ def resize(img: np.ndarray, size: Union[Tuple[int, int], int]) -> np.ndarray:
     return (
         cv2.resize(
             img, dsize=dsize, interpolation=cv2.INTER_AREA
-        )  # use inder_area interpolation method when downsample image.
+        )  # use inter_area interpolation method when downsample image.
         if not is_upsample
         else cv2.resize(
             img, dsize=dsize, interpolation=cv2.INTER_LINEAR
