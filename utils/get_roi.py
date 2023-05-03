@@ -294,7 +294,8 @@ def crop_region_of_plates(
     imgsz: Union[int, None] = 640,
     top_only: bool = True,
     img_show_opt: bool = False,
-) -> np.ndarray:
+    return_as_img: bool = False,
+) -> Union[np.ndarray, Tuple[int, int, int, int]]:
     img_ori = img.copy()  # BGR
     img = cv2.cvtColor(img_ori, cv2.COLOR_BGR2RGB)
     height_ori, width_ori = img_ori.shape[:2]
@@ -333,15 +334,27 @@ def crop_region_of_plates(
             padding_left_right = (plate_width - contour["w"]) // 2
             padding_upper_lower = (plate_height - contour["h"]) // 2
 
-            xtl_cropped = clip(contour["x"] - padding_left_right, lower=0, higher=width_ori)
-            ytl_cropped = clip(contour["y"] - padding_upper_lower, lower=0, higher=height_ori)
+            xtl_cropped = clip(
+                contour["x"] - padding_left_right, lower=0, higher=width_ori
+            )
+            ytl_cropped = clip(
+                contour["y"] - padding_upper_lower, lower=0, higher=height_ori
+            )
 
-            xbr_cropped = clip(xtl_cropped + padding_left_right + plate_width, lower=0, higher=width_ori)
-            ybr_cropped = clip(ytl_cropped + padding_upper_lower + plate_height, lower=0, higher=width_ori)
+            xbr_cropped = clip(
+                xtl_cropped + padding_left_right + plate_width,
+                lower=0,
+                higher=width_ori,
+            )
+            ybr_cropped = clip(
+                ytl_cropped + padding_upper_lower + plate_height,
+                lower=0,
+                higher=width_ori,
+            )
 
             img_cropped = img_ori[
-                ytl_cropped : ybr_cropped,
-                xtl_cropped : xbr_cropped,
+                ytl_cropped:ybr_cropped,
+                xtl_cropped:xbr_cropped,
                 ...,
             ]  # (H, W, C)
 
@@ -353,10 +366,17 @@ def crop_region_of_plates(
             if top_only:
                 break
 
+    # return cropped image if return_as_img is True
+    # else return Tuple: (xtl, ytl, xbr, ybr)
     else:
-        return resize(img_ori, target_imgsz, is_upsample=False)  # BGR
+        img_ori = resize(img_ori, target_imgsz, is_upsample=False)
+        return img_ori if return_as_img else (0, 0, img_ori.shape[1], img_ori.shape[0])
 
-    return resize(img_cropped, target_imgsz, is_upsample=False)  # BGR
+    return (
+        resize(img_cropped, target_imgsz, is_upsample=False)
+        if return_as_img
+        else (xtl_cropped, ytl_cropped, xbr_cropped, ybr_cropped)
+    )
 
 
 if __name__ == "__main__":
