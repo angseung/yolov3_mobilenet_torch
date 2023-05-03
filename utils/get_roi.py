@@ -16,15 +16,19 @@ def unsharp(img: np.ndarray, alpha: float = 2.0) -> np.ndarray:
 
 def resize(
     img: np.ndarray,
-    size: Union[Tuple[int, int], int],
-    is_upsample: Optional[bool] = False,
+    size: Union[Tuple[int, int], int]
 ) -> np.ndarray:
-    height, width, channel = img.shape
+    is_upsample = False
+
+    if len(img.shape) == 2:
+        height, width = img.shape
+    elif len(img.shape) == 3:
+        height, width, channel = img.shape
 
     if isinstance(size, int):
         ratio = height / width if height > width else width / height
         dsize = (
-            (int(size * ratio), size) if width > height else (size, int(size * ratio))
+            (size, int(size / ratio)) if width > height else (int(size / ratio), size)
         )
 
     elif isinstance(size, tuple):
@@ -32,10 +36,14 @@ def resize(
             raise ValueError
         dsize = size
 
+    # check whether resize operation is upsampling or downsampling
+    if dsize[0] * dsize[1] > height * width:
+        is_upsample = True
+
     return (
-        cv2.resize(img, dsize=dsize, interpolation=cv2.INTER_AREA)
+        cv2.resize(img, dsize=dsize, interpolation=cv2.INTER_AREA)  # use inder_area interpolation method when downsample image.
         if not is_upsample
-        else cv2.resize(img, dsize=dsize, interpolation=cv2.INTER_LINEAR)
+        else cv2.resize(img, dsize=dsize, interpolation=cv2.INTER_LINEAR)  # use inder_linear interpolation method when upsample image.
     )
 
 
@@ -369,11 +377,11 @@ def crop_region_of_plates(
     # return cropped image if return_as_img is True
     # else return Tuple: (xtl, ytl, xbr, ybr)
     else:
-        img_ori = resize(img_ori, target_imgsz, is_upsample=False)
+        img_ori = resize(img_ori, target_imgsz)
         return img_ori if return_as_img else (0, 0, img_ori.shape[1], img_ori.shape[0])
 
     return (
-        resize(img_cropped, target_imgsz, is_upsample=False)
+        resize(img_cropped, target_imgsz)
         if return_as_img
         else (xtl_cropped, ytl_cropped, xbr_cropped, ybr_cropped)
     )

@@ -57,8 +57,8 @@ from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
 from utils.quantization_utils import static_quantizer
-from utils.get_roi import crop_region_of_plates
-from utils.augmentations import letterbox
+from utils.get_roi import crop_region_of_plates, resize
+from utils.augmentations import wrap_letterbox
 
 
 @torch.no_grad()
@@ -203,17 +203,22 @@ def run(
                 return_as_img=False,
             )
 
+            # crop around the roi
             im_before_letterboxed = im[:, ytl_crop: ybr_crop, xtl_crop: xbr_crop].transpose([1, 2, 0])  # (H, W, C)
+            size_of_im_before_letterboxed = im_before_letterboxed.shape
 
-            # pad img to make square-form
-            im = letterbox(im_before_letterboxed, new_shape=(320, 320))[0]  # (C, H, W)
+            # resize image
+            im_before_letterboxed_resized = resize(im_before_letterboxed, 320)
+            size_of_im_before_letterboxed_resized = im_before_letterboxed_resized.shape
+
+            # pad img to make square-shape
+            im, pad_axis = wrap_letterbox(im_before_letterboxed_resized, target_size=320)  # (H, W, C)
 
             # convert channel first to last and BGR to RGB
-            im = im.transpose((2, 0, 1))[::-1]
+            im = im.transpose((2, 0, 1))[::-1]  # (C, H, W)
 
             # calculate additional offset between letterboxed one and cropped one
-            width_diff_letterbox = im_before_letterboxed.shape[1] - im.shape[2]
-            height_diff_letterbox = im_before_letterboxed.shape[0] - im.shape[1]
+            pad_offset = (320 - min(*im_before_letterboxed_resized.shape[:2])) // 2
 
         im = torch.from_numpy(im.copy()).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -266,13 +271,20 @@ def run(
             # pred: [xtl, ytl, xbr, ybr, conf, label] in VOC format
             pred_numpy = pred[0].numpy()
 
-            # step 1. compensate top left offset
-            pred_numpy[:, 0] += (xtl_crop + width_diff_letterbox)
-            pred_numpy[:, 1] += (ytl_crop + height_diff_letterbox)
+            # step 1. compensate padding offset
+            if pad_axis == 0:
+                pred_numpy[:, [1, 3]] -= pad_offset
+            else:
+                pred_numpy[:, [0, 2]] -= pad_offset
 
-            # step 2. compensate bottom right offset
-            pred_numpy[:, 2] += (xtl_crop + width_diff_letterbox)
-            pred_numpy[:, 3] += (ytl_crop + height_diff_letterbox)
+            # step 2. rescale bboxes
+            pred_numpy_yolo = label_voc2yolo(pred_numpy[:, [5, 0, 1, 2, 3]], *size_of_im_before_letterboxed_resized[:2])
+            pred_numpy_scaled = label_yolo2voc(pred_numpy_yolo, *size_of_im_before_letterboxed[:2])
+            pred_numpy[:, [0, 1, 2, 3]] = pred_numpy_scaled[:, 1:]
+
+            # step 2. compensate crop offset
+            pred_numpy[:, [0, 2]] += xtl_crop
+            pred_numpy[:, [1, 3]] += ytl_crop
 
             # step 3. convert numpy ndarray to torch tensor
             pred = [torch.from_numpy(pred_numpy)]
