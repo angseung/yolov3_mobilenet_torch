@@ -290,7 +290,7 @@ def run(
             pred = [torch.from_numpy(pred_numpy)]
 
             # finally, replace im to original one
-            im = im_befroe_crop.copy()
+            im = im_befroe_crop.copy()[None]
 
         dt[2] += time_sync() - t3
 
