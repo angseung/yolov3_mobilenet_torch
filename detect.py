@@ -54,7 +54,7 @@ from utils.general import (
 from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
-from utils.augment_utils import auto_canny
+from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
 from utils.quantization_utils import static_quantizer
 from utils.get_roi import crop_region_of_plates
@@ -193,28 +193,38 @@ def run(
             )
 
         if roi_crop:
-            im = crop_region_of_plates(
-                img=im.transpose([1, 2, 0]),
+            im_befroe_crop = im.copy()
+            xtl_crop, ytl_crop, xbr_crop, ybr_crop = crop_region_of_plates(
+                img=im.copy().transpose([1, 2, 0]),
                 target_imgsz=320,
                 imgsz=None,
                 top_only=True,
                 img_show_opt=False,
+                return_as_img=False,
             )
 
+            im_before_letterboxed = im[:, ytl_crop: ybr_crop, xtl_crop: xbr_crop].transpose([1, 2, 0])  # (H, W, C)
+
             # pad img to make square-form
-            im = letterbox(im, new_shape=(320, 320))[0]
+            im = letterbox(im_before_letterboxed, new_shape=(320, 320))[0]  # (C, H, W)
 
             # convert channel first to last and BGR to RGB
             im = im.transpose((2, 0, 1))[::-1]
 
+            # calculate additional offset between letterboxed one and cropped one
+            width_diff_letterbox = im_before_letterboxed.shape[1] - im.shape[2]
+            height_diff_letterbox = im_before_letterboxed.shape[0] - im.shape[1]
+
         im = torch.from_numpy(im.copy()).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
+
         if len(im.shape) == 3:
             im = im[None]  # expand for batch dim
 
         if normalize:
             im = transform_normalize(im)
+
         if gray:
             im = transform_to_gray(im)
 
@@ -250,6 +260,25 @@ def run(
                 .tolist()
             )
             pred = [pred[0][tmp]]
+
+        # compensate point offset if im is cropped
+        if roi_crop:
+            # pred: [xtl, ytl, xbr, ybr, conf, label] in VOC format
+            pred_numpy = pred[0].numpy()
+
+            # step 1. compensate top left offset
+            pred_numpy[:, 0] += (xtl_crop + width_diff_letterbox)
+            pred_numpy[:, 1] += (ytl_crop + height_diff_letterbox)
+
+            # step 2. compensate bottom right offset
+            pred_numpy[:, 2] += (xtl_crop + width_diff_letterbox)
+            pred_numpy[:, 3] += (ytl_crop + height_diff_letterbox)
+
+            # step 3. convert numpy ndarray to torch tensor
+            pred = [torch.from_numpy(pred_numpy)]
+
+            # finally, replace im to original one
+            im = im_befroe_crop.copy()
 
         dt[2] += time_sync() - t3
 
