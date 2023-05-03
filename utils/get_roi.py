@@ -14,10 +14,7 @@ def unsharp(img: np.ndarray, alpha: float = 2.0) -> np.ndarray:
     return dst
 
 
-def resize(
-    img: np.ndarray,
-    size: Union[Tuple[int, int], int]
-) -> np.ndarray:
+def resize(img: np.ndarray, size: Union[Tuple[int, int], int]) -> np.ndarray:
     is_upsample = False
 
     if len(img.shape) == 2:
@@ -41,9 +38,13 @@ def resize(
         is_upsample = True
 
     return (
-        cv2.resize(img, dsize=dsize, interpolation=cv2.INTER_AREA)  # use inder_area interpolation method when downsample image.
+        cv2.resize(
+            img, dsize=dsize, interpolation=cv2.INTER_AREA
+        )  # use inder_area interpolation method when downsample image.
         if not is_upsample
-        else cv2.resize(img, dsize=dsize, interpolation=cv2.INTER_LINEAR)  # use inder_linear interpolation method when upsample image.
+        else cv2.resize(
+            img, dsize=dsize, interpolation=cv2.INTER_LINEAR
+        )  # use inder_linear interpolation method when upsample image.
     )
 
 

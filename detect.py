@@ -204,7 +204,11 @@ def run(
             )
 
             # crop around the roi
-            im_before_letterboxed = im[:, ytl_crop: ybr_crop, xtl_crop: xbr_crop].transpose([1, 2, 0])  # (H, W, C)
+            im_before_letterboxed = im[
+                :, ytl_crop:ybr_crop, xtl_crop:xbr_crop
+            ].transpose(
+                [1, 2, 0]
+            )  # (H, W, C)
             size_of_im_before_letterboxed = im_before_letterboxed.shape
 
             # resize image
@@ -212,7 +216,9 @@ def run(
             size_of_im_before_letterboxed_resized = im_before_letterboxed_resized.shape
 
             # pad img to make square-shape
-            im, pad_axis = wrap_letterbox(im_before_letterboxed_resized, target_size=320)  # (H, W, C)
+            im, pad_axis = wrap_letterbox(
+                im_before_letterboxed_resized, target_size=320
+            )  # (H, W, C)
 
             # convert channel first to last and BGR to RGB
             im = im.transpose((2, 0, 1))[::-1]  # (C, H, W)
@@ -278,8 +284,13 @@ def run(
                 pred_numpy[:, [0, 2]] -= pad_offset
 
             # step 2. rescale bboxes
-            pred_numpy_yolo = label_voc2yolo(pred_numpy[:, [5, 0, 1, 2, 3]], *size_of_im_before_letterboxed_resized[:2])
-            pred_numpy_scaled = label_yolo2voc(pred_numpy_yolo, *size_of_im_before_letterboxed[:2])
+            pred_numpy_yolo = label_voc2yolo(
+                pred_numpy[:, [5, 0, 1, 2, 3]],
+                *size_of_im_before_letterboxed_resized[:2],
+            )
+            pred_numpy_scaled = label_yolo2voc(
+                pred_numpy_yolo, *size_of_im_before_letterboxed[:2]
+            )
             pred_numpy[:, [0, 1, 2, 3]] = pred_numpy_scaled[:, 1:]
 
             # step 2. compensate crop offset
