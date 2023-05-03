@@ -48,7 +48,7 @@ def resize(img: np.ndarray, size: Union[Tuple[int, int], int]) -> np.ndarray:
     )
 
 
-def get_blurred_img(img: np.ndarray) -> np.ndarray:
+def get_binarized_img(img: np.ndarray, blur_opt: bool = True, blur_kernal_size: Optional[int] = 5) -> np.ndarray:
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Morphological Transformation (https://dsbook.tistory.com/203)
@@ -60,7 +60,7 @@ def get_blurred_img(img: np.ndarray) -> np.ndarray:
     imgGrayscalePlusTopHat = cv2.add(gray, imgTopHat)
     gray = cv2.subtract(imgGrayscalePlusTopHat, imgBlackHat)
 
-    return cv2.GaussianBlur(gray, ksize=(5, 5), sigmaX=0)
+    return cv2.GaussianBlur(gray, ksize=(blur_kernal_size, blur_kernal_size), sigmaX=0) if blur_opt else gray
 
 
 def get_thresh_img(img: np.ndarray, mode: Optional[Union[int, str]] = 1) -> np.ndarray:
