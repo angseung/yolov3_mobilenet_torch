@@ -197,7 +197,7 @@ def run(
             xtl_crop, ytl_crop, xbr_crop, ybr_crop = crop_region_of_plates(
                 img=im.copy().transpose([1, 2, 0]),
                 target_imgsz=320,
-                imgsz=None,
+                imgsz=imgsz,
                 top_only=True,
                 img_show_opt=False,
                 return_as_img=False,

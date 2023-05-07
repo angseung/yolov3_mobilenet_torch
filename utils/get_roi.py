@@ -301,6 +301,7 @@ def crop_region_of_plates(
     img: np.ndarray,
     target_imgsz: int = 320,
     imgsz: Union[int, None] = 640,
+    use_yolo: bool = False,
     top_only: bool = True,
     img_show_opt: bool = False,
     return_as_img: bool = False,
@@ -315,25 +316,29 @@ def crop_region_of_plates(
 
     height, width = img.shape[:2]
 
-    # convert img to grayscale
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    if use_yolo:  # use ml-based algorithm
+        raise NotImplementedError
 
-    # blur image to reduce noise
-    blurred = cv2.GaussianBlur(img_gray, (BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0)
+    else:  # use cv-based algorithm
+        # convert img to grayscale
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # detect edge with canny edge detection
-    img1 = cv2.Canny(blurred, CANNY_LOWER_THRESH, CANNY_UPPER_THRESH)
+        # blur image to reduce noise
+        blurred = cv2.GaussianBlur(img_gray, (BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0)
 
-    if img_show_opt:
-        plt.imshow(img1)
-        plt.show()
+        # detect edge with canny edge detection
+        img1 = cv2.Canny(blurred, CANNY_LOWER_THRESH, CANNY_UPPER_THRESH)
 
-    contours = find_roi(img, img1)
-    contours = convert_contour(
-        contours,
-        imgsz=(width, height),
-        target_imgsz=(width_ori, height_ori),
-    )
+        if img_show_opt:
+            plt.imshow(img1)
+            plt.show()
+
+        contours = find_roi(img, img1)
+        contours = convert_contour(
+            contours,
+            imgsz=(width, height),
+            target_imgsz=(width_ori, height_ori),
+        )
 
     if contours:
         for contour in contours:
