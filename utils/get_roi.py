@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Union, Tuple, List, Optional, Dict, Type
 import cv2
 import torch
+from torch import nn
 import numpy as np
 import matplotlib.pyplot as plt
-from models.common import DetectMultiBackend
 from utils.hyps import *
 from utils.torch_utils import normalizer
 from utils.general import non_max_suppression
@@ -318,20 +318,12 @@ def contour_to_plate_region(matched_result: List[Dict[str, Union[int, float]]]) 
 
 def detect_roi_with_yolo(
     img: np.ndarray,
-    path: str,
+    model: nn.Module,
     iou_thres: float = 0.1,
     conf_thres: float = 0.25,
     device: Type[torch.device] = torch.device("cpu"),
     normalize: bool = True,
 ) -> Union[List[Dict[str, Union[int, float]]], None]:
-
-    # load model from a pt file
-    model = DetectMultiBackend(
-        path,
-        device=device,
-        dnn=False,
-    )
-    model.model.float()
 
     # convert image format
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # convert BGR -> RGB
@@ -401,10 +393,10 @@ def detect_roi_with_yolo(
 
 def crop_region_of_plates(
     img: np.ndarray,
+    model: nn.Module,
     target_imgsz: int = 320,
     imgsz: Union[int, None, List[int]] = 640,
     use_yolo: bool = False,
-    yolo_path: str = "best.pt",
     top_only: bool = True,
     img_show_opt: bool = False,
     return_as_img: bool = False,
@@ -424,7 +416,7 @@ def crop_region_of_plates(
     height, width = img.shape[:2]
 
     if use_yolo:  # use ml-based algorithm
-        contours: List[np.ndarray] = detect_roi_with_yolo(img, yolo_path)
+        contours: List[np.ndarray] = detect_roi_with_yolo(img, model)
 
     else:  # use cv-based algorithm
         # convert img to grayscale
