@@ -21,11 +21,11 @@ import cv2
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
-import torch.nn as nn
 from torchvision.ops import nms
 import yaml
 from PIL import ImageFont, ImageDraw, Image
 
+cropped_imgsz = 320
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
 if str(ROOT) not in sys.path:
@@ -57,7 +57,7 @@ from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
 from utils.quantization_utils import static_quantizer
-from utils.get_roi import crop_region_of_plates, resize
+from utils.get_roi import crop_region_of_plates, resize, rescale_roi
 from utils.augmentations import wrap_letterbox
 
 
@@ -133,7 +133,9 @@ def run(
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
 
     if roi_crop and use_yolo:
-        pth_path = os.path.join(str(FILE.parents[0]), "runs", "train", "Case_201", "weights", "best.pt")
+        pth_path = os.path.join(
+            str(FILE.parents[0]), "runs", "train", "Case_201", "weights", "best.pt"
+        )
         roi_model = DetectMultiBackend(pth_path, device=device, dnn=dnn)
         roi_model.model.float()
 
@@ -172,7 +174,12 @@ def run(
         # raise NotImplementedError
         model = model.to("cpu")
         device = torch.device("cpu")
-        model.model = static_quantizer(model.model, configs=None, layers_to_fuse=[], data_to_calibrate=torch.randn(1))
+        model.model = static_quantizer(
+            model.model,
+            configs=None,
+            layers_to_fuse=[],
+            data_to_calibrate=torch.randn(1),
+        )
 
     # Dataloader
     if webcam:
@@ -205,8 +212,8 @@ def run(
             im_befroe_crop = im.copy()
             xtl_crop, ytl_crop, xbr_crop, ybr_crop = crop_region_of_plates(
                 img=im.copy().transpose([1, 2, 0]),
-                model=roi_model,
-                target_imgsz=320,
+                model=roi_model if use_yolo else None,
+                target_imgsz=cropped_imgsz,
                 imgsz=imgsz,
                 use_yolo=use_yolo,
                 top_only=True,
@@ -221,21 +228,33 @@ def run(
                 [1, 2, 0]
             )  # (H, W, C)
             size_of_im_before_letterboxed = im_before_letterboxed.shape
+            (
+                scaled_xtl_crop,
+                scaled_ytl_crop,
+                scaled_xbr_crop,
+                scaled_ybr_crop,
+            ) = rescale_roi(
+                region_of_roi=(xtl_crop, ytl_crop, xbr_crop, ybr_crop),
+                prev_shape=im0s.shape[:2],
+                resized_shape=im_befroe_crop.shape[1:],
+            )
 
             # resize image
-            im_before_letterboxed_resized = resize(im_before_letterboxed, 320)
+            im_before_letterboxed_resized = resize(im_before_letterboxed, cropped_imgsz)
             size_of_im_before_letterboxed_resized = im_before_letterboxed_resized.shape
 
             # pad img to make square-shape
             im, pad_axis = wrap_letterbox(
-                im_before_letterboxed_resized, target_size=320
+                im_before_letterboxed_resized, target_size=cropped_imgsz
             )  # (H, W, C)
 
             # convert channel first to last and BGR to RGB
             im = im.transpose((2, 0, 1))[::-1]  # (C, H, W)
 
             # calculate additional offset between letterboxed one and cropped one
-            pad_offset = (320 - min(*im_before_letterboxed_resized.shape[:2])) // 2
+            pad_offset = (
+                cropped_imgsz - min(*im_before_letterboxed_resized.shape[:2])
+            ) // 2
 
         im = torch.from_numpy(im.copy()).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -419,6 +438,15 @@ def run(
             draw = ImageDraw.Draw(img_pillow)
             draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
             im0 = np.array(img_pillow)
+
+            if roi_crop:
+                im0 = cv2.rectangle(
+                    im0,
+                    (scaled_xtl_crop, scaled_ytl_crop),
+                    (scaled_xbr_crop, scaled_ybr_crop),
+                    (255, 0, 0),
+                    5,
+                )
 
             if view_img:
                 cv2.imshow(str(p), im0)

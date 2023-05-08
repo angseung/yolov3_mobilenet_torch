@@ -14,6 +14,7 @@ from utils.general import non_max_suppression
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
 
+
 def unsharp(img: np.ndarray, alpha: float = 2.0) -> np.ndarray:
     blr = cv2.GaussianBlur(img, (0, 0), 2)
     dst = np.clip((1 + alpha) * img - alpha * blr, 0, 255).astype(np.uint8)
@@ -324,7 +325,6 @@ def detect_roi_with_yolo(
     device: Type[torch.device] = torch.device("cpu"),
     normalize: bool = True,
 ) -> Union[List[Dict[str, Union[int, float]]], None]:
-
     # convert image format
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # convert BGR -> RGB
     img = img.transpose([2, 0, 1])  # convert [H, W, C] to [C, H, W]
@@ -357,7 +357,7 @@ def detect_roi_with_yolo(
 
     # convert bboxes to list of Dict[str, int] format
     contours: List[Dict[str, Union[int, float]]] = []
-    pred_np = pred[0].numpy()[:, : 4]
+    pred_np = pred[0].numpy()[:, :4]
 
     if pred_np.size:
         for bbox in pred_np:
@@ -393,7 +393,7 @@ def detect_roi_with_yolo(
 
 def crop_region_of_plates(
     img: np.ndarray,
-    model: nn.Module,
+    model: Union[nn.Module, None],
     target_imgsz: int = 320,
     imgsz: Union[int, None, List[int]] = 640,
     use_yolo: bool = False,
@@ -493,6 +493,24 @@ def crop_region_of_plates(
     else:
         img_ori = resize(img_ori, target_imgsz)
         return img_ori if return_as_img else (0, 0, img_ori.shape[1], img_ori.shape[0])
+
+
+def rescale_roi(
+    region_of_roi: Tuple[int, int, int, int],
+    prev_shape: Tuple[int, int],
+    resized_shape: Tuple[int, int],
+) -> Tuple[int, int, int, int]:
+    ratio_of_width = prev_shape[0] / resized_shape[0]
+    ratio_of_height = prev_shape[1] / resized_shape[1]
+
+    region_of_roi_scaled = (
+        int(region_of_roi[0] * ratio_of_width),
+        int(region_of_roi[1] * ratio_of_height),
+        int(region_of_roi[2] * ratio_of_width),
+        int(region_of_roi[3] * ratio_of_height),
+    )
+
+    return region_of_roi_scaled
 
 
 if __name__ == "__main__":

@@ -375,7 +375,10 @@ def wrap_letterbox(img: np.ndarray, target_size: int, color: Optional[Tuple[int,
 
     pad_amount = (target_size - min(width, height)) // 2
 
-    if is_vertical:  # pad left and right side
+    if pad_amount == 0:
+        return img, 0
+
+    elif is_vertical:  # pad left and right side
         if is_odd:
             output_image[:, pad_amount : -pad_amount - 1, :] = img
         else:
