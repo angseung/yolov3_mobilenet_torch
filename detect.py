@@ -97,6 +97,7 @@ def run(
     compile_model=False,
     quantize_model=False,
     roi_crop=False,
+    use_yolo=False,
 ):
     assert not (
         normalize and gray
@@ -199,7 +200,7 @@ def run(
                 img=im.copy().transpose([1, 2, 0]),
                 target_imgsz=320,
                 imgsz=imgsz,
-                use_yolo=True,
+                use_yolo=use_yolo,
                 yolo_path=pth_path,
                 top_only=True,
                 img_show_opt=False,
@@ -277,6 +278,7 @@ def run(
 
         # compensate point offset if im is cropped
         if roi_crop:
+            # TODO: Implement drawing codes for an indicator of cropped area
             # pred: [xtl, ytl, xbr, ybr, conf, label] in VOC format
             pred_numpy = pred[0].numpy()
 
@@ -504,6 +506,9 @@ def parse_opt():
     )
     parser.add_argument(
         "--roi-crop", action="store_true", help="crop input around the roi"
+    )
+    parser.add_argument(
+        "--use-yolo", action="store_true", help="crop input around the roi"
     )
     parser.add_argument(
         "--max-det", type=int, default=1000, help="maximum detections per image"

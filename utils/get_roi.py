@@ -367,7 +367,7 @@ def detect_roi_with_yolo(
     contours: List[Dict[str, Union[int, float]]] = []
     pred_np = pred[0].numpy()[:, : 4]
 
-    if pred_np:
+    if pred_np.size:
         for bbox in pred_np:
             x = int(bbox[0])
             y = int(bbox[1])
@@ -451,6 +451,7 @@ def crop_region_of_plates(
         )
 
         for contour in contours:
+            # TODO: Implement crop size decision codes based the size of each chars in plates...
             plate_width = int(contour["w"] * PLATE_WIDTH_PADDING)
             plate_height = int(contour["h"] * PLATE_HEIGHT_PADDING)
 
@@ -489,17 +490,17 @@ def crop_region_of_plates(
             if top_only:
                 break
 
+        return (
+            resize(img_cropped, target_imgsz)
+            if return_as_img
+            else (xtl_cropped, ytl_cropped, xbr_cropped, ybr_cropped)
+        )
+
     # return cropped image if return_as_img is True
     # else return Tuple: (xtl, ytl, xbr, ybr)
     else:
         img_ori = resize(img_ori, target_imgsz)
         return img_ori if return_as_img else (0, 0, img_ori.shape[1], img_ori.shape[0])
-
-    return (
-        resize(img_cropped, target_imgsz)
-        if return_as_img
-        else (xtl_cropped, ytl_cropped, xbr_cropped, ybr_cropped)
-    )
 
 
 if __name__ == "__main__":
