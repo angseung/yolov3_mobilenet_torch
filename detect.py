@@ -132,8 +132,16 @@ def run(
 
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
 
+    if roi_crop and use_yolo:
+        pth_path = os.path.join(str(FILE.parents[0]), "runs", "train", "Case_201", "weights", "best.pt")
+        roi_model = DetectMultiBackend(pth_path, device=device, dnn=dnn)
+        roi_model.model.float()
+
     if compile_model:
         model.model = torch.compile(model.model)
+
+        if roi_crop and use_yolo:
+            roi_model.model = torch.compile(roi_model.model)
 
     stride, names, pt, jit, onnx = (
         model.stride,
@@ -164,7 +172,7 @@ def run(
         # raise NotImplementedError
         model = model.to("cpu")
         device = torch.device("cpu")
-        model.model = static_quantizer(model.model, configs=None)
+        model.model = static_quantizer(model.model, configs=None, layers_to_fuse=[], data_to_calibrate=torch.randn(1))
 
     # Dataloader
     if webcam:
@@ -195,7 +203,7 @@ def run(
 
         if roi_crop:
             im_befroe_crop = im.copy()
-            pth_path = os.path.join(str(FILE.parents[0]), "runs", "train", "Case_201", "weights", "best.pt")
+            # pth_path = os.path.join(str(FILE.parents[0]), "runs", "train", "Case_201", "weights", "best.pt")
             xtl_crop, ytl_crop, xbr_crop, ybr_crop = crop_region_of_plates(
                 img=im.copy().transpose([1, 2, 0]),
                 target_imgsz=320,
