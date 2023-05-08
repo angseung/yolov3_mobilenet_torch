@@ -1,10 +1,14 @@
 import os
 import time
-from typing import Union, Tuple, List, Optional, Dict
+from typing import Union, Tuple, List, Optional, Dict, Type
 import cv2
+import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from models.common import DetectMultiBackend
 from utils.hyps import *
+from utils.torch_utils import normalizer
+from utils.general import non_max_suppression
 
 
 def unsharp(img: np.ndarray, alpha: float = 2.0) -> np.ndarray:
@@ -48,7 +52,9 @@ def resize(img: np.ndarray, size: Union[Tuple[int, int], int]) -> np.ndarray:
     )
 
 
-def get_binarized_img(img: np.ndarray, blur_opt: bool = True, blur_kernal_size: Optional[int] = 5) -> np.ndarray:
+def get_binarized_img(
+    img: np.ndarray, blur_opt: bool = True, blur_kernal_size: Optional[int] = 5
+) -> np.ndarray:
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Morphological Transformation (https://dsbook.tistory.com/203)
@@ -60,7 +66,11 @@ def get_binarized_img(img: np.ndarray, blur_opt: bool = True, blur_kernal_size: 
     imgGrayscalePlusTopHat = cv2.add(gray, imgTopHat)
     gray = cv2.subtract(imgGrayscalePlusTopHat, imgBlackHat)
 
-    return cv2.GaussianBlur(gray, ksize=(blur_kernal_size, blur_kernal_size), sigmaX=0) if blur_opt else gray
+    return (
+        cv2.GaussianBlur(gray, ksize=(blur_kernal_size, blur_kernal_size), sigmaX=0)
+        if blur_opt
+        else gray
+    )
 
 
 def get_thresh_img(img: np.ndarray, mode: Optional[Union[int, str]] = 1) -> np.ndarray:
@@ -297,10 +307,66 @@ def clip(val: int, lower: int = 0, higher: int = 255) -> int:
         return higher
 
 
+def detect_roi_with_yolo(
+    img: np.ndarray,
+    path: str,
+    iou_thres: float = 0.1,
+    conf_thres: float = 0.25,
+    device: Type[torch.device] = torch.device("cpu"),
+    normalize: bool = True,
+) -> List[Dict[str, int]]:
+
+    # load model from a pt file
+    model = DetectMultiBackend(
+        path,
+        device=device,
+        dnn=False,
+    )
+    model.model.float()
+
+    # convert image format
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # convert BGR -> RGB
+    img = img.transpose([2, 0, 1])  # convert [H, W, C] to [C, H, W]
+
+    # convert np.ndarray to torch.tensor
+    img_tensor = torch.from_numpy(img).float()  # uint8 to fp16/32
+    img_tensor /= 255  # 0 - 255 to 0.0 - 1.0
+
+    if len(img_tensor.shape) == 3:
+        img_tensor = img_tensor[None]  # expand for batch dim
+
+    # normalize input image
+    if normalize:
+        img_tensor = normalizer()(img_tensor)
+
+    # inference with yolo model
+    pred = model(img_tensor, augment=False, visualize=False, val=False)
+
+    # nms
+    pred = non_max_suppression(
+        pred,
+        conf_thres=conf_thres,
+        iou_thres=iou_thres,
+        classes=None,
+        agnostic=False,
+        max_det=1000,
+        use_soft=False,
+    )
+
+    # convert bboxes to list of Dict[str, int] format
+    contours: Dict[str, int] = {}
+
+    for bbox in pred:
+        # TODO: implement contour converting routine...
+        pass
+
+    return contours
+
+
 def crop_region_of_plates(
     img: np.ndarray,
     target_imgsz: int = 320,
-    imgsz: Union[int, None] = 640,
+    imgsz: Union[int, None, List[int]] = 640,
     use_yolo: bool = False,
     top_only: bool = True,
     img_show_opt: bool = False,
@@ -312,7 +378,11 @@ def crop_region_of_plates(
 
     # resize input image
     if imgsz is not None:
-        img = resize(img_ori, imgsz, is_upsample=False)
+        if isinstance(imgsz, list):
+            img = resize(img_ori, imgsz[0])
+
+        else:
+            img = resize(img_ori, imgsz)
 
     height, width = img.shape[:2]
 
@@ -334,11 +404,13 @@ def crop_region_of_plates(
             plt.show()
 
         contours = find_roi(img, img1)
-        contours = convert_contour(
-            contours,
-            imgsz=(width, height),
-            target_imgsz=(width_ori, height_ori),
-        )
+
+    # rescale bboxes to the original shape
+    contours = convert_contour(
+        contours,
+        imgsz=(width, height),
+        target_imgsz=(width_ori, height_ori),
+    )
 
     if contours:
         for contour in contours:
