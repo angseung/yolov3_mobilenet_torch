@@ -98,6 +98,7 @@ def run(
     quantize_model=False,
     roi_crop=False,
     use_yolo=False,
+    show_best_epochs=False,
 ):
     assert not (
         normalize and gray
@@ -126,24 +127,26 @@ def run(
     # Load model
     device = select_device(device)
 
-    if "yaml" not in str(weights):
+    if show_best_epochs and "yaml" not in str(weights):
         best_epoch = torch.load(weights, map_location=device)["epoch"]
         print(f"loading best scored model, {best_epoch}th...")
 
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
 
+    # use ROI detection with yolo
     if roi_crop and use_yolo:
-        pth_path = os.path.join(
-            str(FILE.parents[0]), "runs", "train", "Case_201", "weights", "best.pt"
-        )
+        # TODO: compare performance of each models, 201~204.pt
+        pth_path = os.path.join(str(FILE.parents[0]), "weights", "202.pt")
         roi_model = DetectMultiBackend(pth_path, device=device, dnn=dnn)
         roi_model.model.float()
 
     if compile_model:
-        model.model = torch.compile(model.model)
+        model.model = torch.compile(model.model)  # compile inference model
 
         if roi_crop and use_yolo:
-            roi_model.model = torch.compile(roi_model.model)
+            roi_model.model = torch.compile(
+                roi_model.model
+            )  # compile roi detecting model
 
     stride, names, pt, jit, onnx = (
         model.stride,
@@ -171,15 +174,7 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
-        # raise NotImplementedError
-        model = model.to("cpu")
-        device = torch.device("cpu")
-        model.model = static_quantizer(
-            model.model,
-            configs=None,
-            layers_to_fuse=[],
-            data_to_calibrate=torch.randn(1),
-        )
+        raise NotImplementedError("Model quantizer for yolo model is not supported yet")
 
     # Dataloader
     if webcam:
