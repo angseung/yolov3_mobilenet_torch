@@ -226,7 +226,7 @@ def convert_contour(
     contours: List[Dict],
     imgsz: Tuple[int, int],
     target_imgsz: Tuple[int, int],
-) -> List[Dict[str, int]]:
+) -> List[np.ndarray]:
     """
     It converts contours size to original shape
     :param contours: contours to be resized
@@ -286,7 +286,7 @@ def clip(val: int, lower: int = 0, higher: int = 255) -> int:
         return higher
 
 
-def contour_to_plate_region(matched_result: List[Dict[str, Union[int, float]]]) -> List:
+def contour_to_plate_region(matched_result: List[np.ndarray]) -> List:
     plate_infos = []
 
     for i, matched_chars in enumerate(matched_result):
