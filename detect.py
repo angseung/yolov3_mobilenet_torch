@@ -194,10 +194,13 @@ def run(
 
         if roi_crop:
             im_befroe_crop = im.copy()
+            pth_path = os.path.join(str(FILE.parents[0]), "runs", "train", "Case_201", "weights", "best.pt")
             xtl_crop, ytl_crop, xbr_crop, ybr_crop = crop_region_of_plates(
                 img=im.copy().transpose([1, 2, 0]),
                 target_imgsz=320,
                 imgsz=imgsz,
+                use_yolo=True,
+                yolo_path=pth_path,
                 top_only=True,
                 img_show_opt=False,
                 return_as_img=False,

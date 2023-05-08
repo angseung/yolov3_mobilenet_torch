@@ -1,5 +1,6 @@
 import os
 import time
+from pathlib import Path
 from typing import Union, Tuple, List, Optional, Dict, Type
 import cv2
 import torch
@@ -10,6 +11,8 @@ from utils.hyps import *
 from utils.torch_utils import normalizer
 from utils.general import non_max_suppression
 
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]
 
 def unsharp(img: np.ndarray, alpha: float = 2.0) -> np.ndarray:
     blr = cv2.GaussianBlur(img, (0, 0), 2)
@@ -213,32 +216,7 @@ def find_roi(img: np.ndarray, img_thresh: np.ndarray) -> List[Dict[str, int]]:
     for idx_list in result_idx:
         matched_result.append(np.take(possible_contours, idx_list))
 
-    plate_infos = []
-
-    for i, matched_chars in enumerate(matched_result):
-        sorted_chars = sorted(matched_chars, key=lambda x: x["cx"])
-
-        plate_cx = (sorted_chars[0]["cx"] + sorted_chars[-1]["cx"]) / 2
-        plate_cy = (sorted_chars[0]["cy"] + sorted_chars[-1]["cy"]) / 2
-
-        plate_width = (
-            sorted_chars[-1]["x"] + sorted_chars[-1]["w"] - sorted_chars[0]["x"]
-        ) * PLATE_WIDTH_PADDING
-
-        sum_height = 0
-
-        for d in sorted_chars:
-            sum_height += d["h"]
-
-        plate_height = int(sum_height / len(sorted_chars) * PLATE_HEIGHT_PADDING)
-        plate_infos.append(
-            {
-                "x": int(plate_cx - plate_width / 2),
-                "y": int(plate_cy - plate_height / 2),
-                "w": int(plate_width),
-                "h": int(plate_height),
-            }
-        )
+    plate_infos = contour_to_plate_region(matched_result)
 
     return plate_infos
 
@@ -307,6 +285,37 @@ def clip(val: int, lower: int = 0, higher: int = 255) -> int:
         return higher
 
 
+def contour_to_plate_region(matched_result: List[Dict[str, Union[int, float]]]) -> List:
+    plate_infos = []
+
+    for i, matched_chars in enumerate(matched_result):
+        sorted_chars = sorted(matched_chars, key=lambda x: x["cx"])
+
+        plate_cx = (sorted_chars[0]["cx"] + sorted_chars[-1]["cx"]) / 2
+        plate_cy = (sorted_chars[0]["cy"] + sorted_chars[-1]["cy"]) / 2
+
+        plate_width = (
+            sorted_chars[-1]["x"] + sorted_chars[-1]["w"] - sorted_chars[0]["x"]
+        ) * PLATE_WIDTH_PADDING
+
+        sum_height = 0
+
+        for d in sorted_chars:
+            sum_height += d["h"]
+
+        plate_height = int(sum_height / len(sorted_chars) * PLATE_HEIGHT_PADDING)
+        plate_infos.append(
+            {
+                "x": int(plate_cx - plate_width / 2),
+                "y": int(plate_cy - plate_height / 2),
+                "w": int(plate_width),
+                "h": int(plate_height),
+            }
+        )
+
+    return plate_infos
+
+
 def detect_roi_with_yolo(
     img: np.ndarray,
     path: str,
@@ -314,7 +323,7 @@ def detect_roi_with_yolo(
     conf_thres: float = 0.25,
     device: Type[torch.device] = torch.device("cpu"),
     normalize: bool = True,
-) -> List[Dict[str, int]]:
+) -> Union[List[Dict[str, Union[int, float]]], None]:
 
     # load model from a pt file
     model = DetectMultiBackend(
@@ -343,6 +352,7 @@ def detect_roi_with_yolo(
     pred = model(img_tensor, augment=False, visualize=False, val=False)
 
     # nms
+    # pred can be mapped with matched_results in a cv-based algorithm.
     pred = non_max_suppression(
         pred,
         conf_thres=conf_thres,
@@ -354,13 +364,39 @@ def detect_roi_with_yolo(
     )
 
     # convert bboxes to list of Dict[str, int] format
-    contours: Dict[str, int] = {}
+    contours: List[Dict[str, Union[int, float]]] = []
+    pred_np = pred[0].numpy()[:, : 4]
 
-    for bbox in pred:
-        # TODO: implement contour converting routine...
-        pass
+    if pred_np:
+        for bbox in pred_np:
+            x = int(bbox[0])
+            y = int(bbox[1])
+            w = int(bbox[2] - bbox[0])
+            h = int(bbox[3] - bbox[1])
+            cx = x + (w / 2)
+            cy = y + (h / 2)
 
-    return contours
+            contours.append(
+                {
+                    "contour": None,
+                    "x": x,
+                    "y": y,
+                    "w": w,
+                    "h": h,
+                    "cx": cx,
+                    "cy": cy,
+                }
+            )
+
+        matched_result = [np.array(contours)]
+
+        # convert contours of chars to contours of region of plate
+        contours = contour_to_plate_region(matched_result)
+
+        return contours
+
+    else:
+        return None
 
 
 def crop_region_of_plates(
@@ -368,6 +404,7 @@ def crop_region_of_plates(
     target_imgsz: int = 320,
     imgsz: Union[int, None, List[int]] = 640,
     use_yolo: bool = False,
+    yolo_path: str = "best.pt",
     top_only: bool = True,
     img_show_opt: bool = False,
     return_as_img: bool = False,
@@ -387,7 +424,7 @@ def crop_region_of_plates(
     height, width = img.shape[:2]
 
     if use_yolo:  # use ml-based algorithm
-        raise NotImplementedError
+        contours: List[np.ndarray] = detect_roi_with_yolo(img, yolo_path)
 
     else:  # use cv-based algorithm
         # convert img to grayscale
@@ -403,16 +440,16 @@ def crop_region_of_plates(
             plt.imshow(img1)
             plt.show()
 
-        contours = find_roi(img, img1)
-
-    # rescale bboxes to the original shape
-    contours = convert_contour(
-        contours,
-        imgsz=(width, height),
-        target_imgsz=(width_ori, height_ori),
-    )
+        contours: List[np.ndarray] = find_roi(img, img1)
 
     if contours:
+        # rescale bboxes to the original shape
+        contours = convert_contour(
+            contours,
+            imgsz=(width, height),
+            target_imgsz=(width_ori, height_ori),
+        )
+
         for contour in contours:
             plate_width = int(contour["w"] * PLATE_WIDTH_PADDING)
             plate_height = int(contour["h"] * PLATE_HEIGHT_PADDING)
