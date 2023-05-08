@@ -304,7 +304,6 @@ def run(
 
         # compensate point offset if im is cropped
         if roi_crop:
-            # TODO: Implement drawing codes for an indicator of cropped area
             # pred: [xtl, ytl, xbr, ybr, conf, label] in VOC format
             pred_numpy = pred[0].numpy()
 
