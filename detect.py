@@ -56,7 +56,6 @@ from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
-from utils.quantization_utils import static_quantizer
 from utils.get_roi import crop_region_of_plates, resize, rescale_roi
 from utils.augmentations import wrap_letterbox
 
@@ -98,7 +97,7 @@ def run(
     quantize_model=False,
     roi_crop=False,
     use_yolo=False,
-    show_best_epochs=False,
+    show_best_epoch=False,
 ):
     assert not (
         normalize and gray
@@ -127,7 +126,7 @@ def run(
     # Load model
     device = select_device(device)
 
-    if show_best_epochs and "yaml" not in str(weights):
+    if show_best_epoch and "yaml" not in str(weights):
         best_epoch = torch.load(weights, map_location=device)["epoch"]
         print(f"loading best scored model, {best_epoch}th...")
 
