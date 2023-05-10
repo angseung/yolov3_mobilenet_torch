@@ -475,13 +475,13 @@ def parse_opt():
     parser.add_argument(
         "--weights",
         type=str,
-        default=ROOT / "models/fall-down.pt",
+        default=ROOT / "models/best.pt",
         help="model path(s)",
     )
     parser.add_argument(
         "--source",
         type=str,
-        default=ROOT / "data/falldown",
+        default=ROOT / "data/video",
         help="file/dir/URL/glob, 0 for webcam",
     )
     parser.add_argument(

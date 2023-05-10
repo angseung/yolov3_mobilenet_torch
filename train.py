@@ -676,7 +676,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
 def parse_opt(known=False):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--weights", type=str, default=ROOT / "yolov3.pt", help="initial weights path"
+        "--weights", type=str, default=ROOT / " ", help="initial weights path"
     )
     parser.add_argument(
         "--cfg",
@@ -686,7 +686,7 @@ def parse_opt(known=False):
         help="model.yaml path",
     )
     parser.add_argument(
-        "--data", type=str, default=ROOT / "data/yperv2.yaml", help="dataset.yaml path"
+        "--data", type=str, default=ROOT / "data/thermal.yaml", help="dataset.yaml path"
     )
     parser.add_argument(
         "--hyp",
@@ -704,7 +704,7 @@ def parse_opt(known=False):
     parser.add_argument(
         "--imgsz",
         type=int,
-        default=640,
+        default=128,
         help="train, val image size (pixels)",
     )
     parser.add_argument(
