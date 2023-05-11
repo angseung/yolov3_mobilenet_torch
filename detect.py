@@ -26,6 +26,7 @@ import torch.backends.cudnn as cudnn
 from torchvision.ops import nms
 import yaml
 from PIL import ImageFont, ImageDraw, Image
+from collections import deque
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
@@ -75,9 +76,9 @@ else:
 
 @torch.no_grad()
 def run(
-    weights=ROOT / "yolov3.pt",  # model.pt path(s)
+    weights=ROOT / "test10.pt",  # model.pt path(s)
     source=ROOT / "data/images",  # file/dir/URL/glob, 0 for webcam
-    imgsz=320,  # inference size (pixels)
+    imgsz=128,  # inference size (pixels)
     conf_thres=0.25,  # confidence threshold
     iou_thres=0.45,  # NMS IOU threshold
     max_det=1000,  # maximum detections per image
@@ -179,17 +180,15 @@ def run(
         )
     dt, seen = [0.0, 0.0, 0.0], 0
 
-    points_x = []
-    points_y = []
-    width_list = []
-    height_list = []
+    points_y = deque(maxlen=2)
+    height_list = deque(maxlen=2)
     h0_list = []
-    pages = []
     flag = 0
     num = 0
     h0_is_determined = False
 
     warn = Image.open("warning.png")
+    warn = warn.resize((int(warn.size[0]/3),int(warn.size[1]/3)))
 
     for page, (path, im, im0s, vid_cap, s) in enumerate(dataset):
         t1 = time_sync()
@@ -353,32 +352,28 @@ def run(
 
             if len(det) != 0:
                 if (page % frame_interval) == 0:
-                    x, y = (det[0][0] + det[0][2]) // 2, (det[0][1] + det[0][3]) // 2
-                    points_x.append(float(x.item()))
+                    y = (det[0][1] + det[0][3]) // 2
                     points_y.append(float(y.item()))
-                    width_list.append(float(det[0][2] - float(x.item())))
                     height_list.append(float(det[0][3] - float(y.item())))
-                    pages.append(float(page))
                     h0_list.append(float(h0))
                     num += 1
 
-            for x_, y_ in zip(points_x, points_y):
-                img_pillow = draw_point(img_pillow, (x_, y_))
-
+            # for x_, y_ in zip(points_x, points_y):
+            #     img_pillow = draw_point(img_pillow, (x_, y_)) # draw trajectory
+            print(points_y)
             for y in range(len(points_y) - 1):
-                acc = (height_list[y + 1] - height_list[y]) / h0
-
-                if abs(acc) > 0.2:
+                # acc = (height_list[y + 1] - height_list[y]) / h0
+                acc = points_y[y + 1] / points_y[y]
+                if abs(acc) > 1.1:
                     flag = 1
 
                 else:
                     flag = 0
-
+            
             draw = ImageDraw.Draw(img_pillow)
-
             if flag == 1:
                 draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
-                img_pillow.paste(im=warn, box=(60, 70))
+                img_pillow.paste(im=warn, box=(0, 0))
                 im0 = np.array(img_pillow)
 
             else:
@@ -410,18 +405,12 @@ def run(
                             newline="",
                         ) as f:
                             writer = csv.writer(f)
-                            writer.writerow(points_x)
                             writer.writerow(points_y)
-                            writer.writerow(width_list)
                             writer.writerow(height_list)
-                            writer.writerow(pages)
                             writer.writerow(h0_list)
 
-                        points_x = []
-                        points_y = []
-                        width_list = []
-                        height_list = []
-                        pages = []
+                        points_y = deque(maxlen=2)
+                        height_list = deque(maxlen=2)
                         flag = 0
                         num = 0
                         h0_list = []
@@ -475,13 +464,13 @@ def parse_opt():
     parser.add_argument(
         "--weights",
         type=str,
-        default=ROOT / "models/best.pt",
+        default=ROOT / "models/test.pt",
         help="model path(s)",
     )
     parser.add_argument(
         "--source",
         type=str,
-        default=ROOT / "data/video",
+        default=ROOT / "data/fall_images",
         help="file/dir/URL/glob, 0 for webcam",
     )
     parser.add_argument(
@@ -490,7 +479,7 @@ def parse_opt():
         "--img-size",
         nargs="+",
         type=int,
-        default=[640],
+        default=[128],
         help="inference size h,w",
     )
     parser.add_argument(
