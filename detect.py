@@ -26,7 +26,8 @@ import torch.backends.cudnn as cudnn
 from torchvision.ops import nms
 import yaml
 from PIL import ImageFont, ImageDraw, Image
-from collections import deque
+import numpy as np
+from numpy_ringbuffer import RingBuffer
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
@@ -58,6 +59,7 @@ from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny
 from utils.detect_utils import read_bboxes, correction_plate
+from utils.falldown import check_fall
 
 is_windows = False
 is_linux = False
@@ -180,8 +182,8 @@ def run(
         )
     dt, seen = [0.0, 0.0, 0.0], 0
 
-    points_y = deque(maxlen=2)
-    height_list = deque(maxlen=2)
+    points_y = RingBuffer(capacity=2)
+    height_list = RingBuffer(capacity=2)
     h0_list = []
     flag = 0
     num = 0
@@ -351,24 +353,17 @@ def run(
             frame_interval = source_fps // device_fps
 
             if len(det) != 0:
-                if (page % frame_interval) == 0:
-                    y = (det[0][1] + det[0][3]) // 2
-                    points_y.append(float(y.item()))
-                    height_list.append(float(det[0][3] - float(y.item())))
-                    h0_list.append(float(h0))
-                    num += 1
+                # if (page % frame_interval) == 0:
+                y = (det[0][1] + det[0][3]) // 2
+                points_y.append(float(y.item()))
+                height_list.append(float(det[0][3] - float(y.item())))
+                h0_list.append(float(h0))
+                num += 1
 
-            # for x_, y_ in zip(points_x, points_y):
+            # for x_, y_ in zip(points_x, points_y):s
             #     img_pillow = draw_point(img_pillow, (x_, y_)) # draw trajectory
-            print(points_y)
-            for y in range(len(points_y) - 1):
-                # acc = (height_list[y + 1] - height_list[y]) / h0
-                acc = points_y[y + 1] / points_y[y]
-                if abs(acc) > 1.1:
-                    flag = 1
-
-                else:
-                    flag = 0
+            if len(height_list) > 1:
+                flag = check_fall("garam",points_y)
             
             draw = ImageDraw.Draw(img_pillow)
             if flag == 1:
@@ -409,8 +404,8 @@ def run(
                             writer.writerow(height_list)
                             writer.writerow(h0_list)
 
-                        points_y = deque(maxlen=2)
-                        height_list = deque(maxlen=2)
+                        points_y = RingBuffer(capacity=2)
+                        height_list = RingBuffer(capacity=2)
                         flag = 0
                         num = 0
                         h0_list = []
