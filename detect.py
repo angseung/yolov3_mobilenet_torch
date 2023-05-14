@@ -56,7 +56,7 @@ from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
 from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
-from utils.get_roi import crop_region_of_plates, resize, rescale_roi
+from utils.roi_utils import crop_region_of_plates, resize, rescale_roi
 from utils.augmentations import wrap_letterbox
 
 

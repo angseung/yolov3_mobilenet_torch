@@ -15,6 +15,25 @@ FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
 
 
+def parse_detection_results(fname: str) -> np.ndarray:
+    """
+    parses the label file, then converts it to np.ndarray type
+    Args:
+        fname: detection_results file name
+
+    Returns: label in yolo format as np.ndarray
+
+    """
+    with open(fname, encoding="utf-8") as f:
+        bboxes = f.readlines()
+        label = []
+
+    for bbox in bboxes:
+        label.append(bbox.split()[:-1])
+
+    return np.array(label, dtype=np.float64)
+
+
 def unsharp(img: np.ndarray, alpha: float = 2.0) -> np.ndarray:
     blr = cv2.GaussianBlur(img, (0, 0), 2)
     dst = np.clip((1 + alpha) * img - alpha * blr, 0, 255).astype(np.uint8)
