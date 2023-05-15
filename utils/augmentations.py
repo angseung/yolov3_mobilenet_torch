@@ -18,6 +18,7 @@ from utils.general import (
 )
 from utils.metrics import bbox_ioa
 
+
 class Albumentations:
     #  Albumentations class (optional, only used if package is installed)
     def __init__(self):
@@ -353,7 +354,11 @@ def box_candidates(
     )  # candidates
 
 
-def wrap_letterbox(img: np.ndarray, target_size: int, color: Optional[Tuple[int, int, int]] = (114, 114, 114)) -> Tuple[np.ndarray, int]:
+def wrap_letterbox(
+    img: np.ndarray,
+    target_size: int,
+    color: Optional[Tuple[int, int, int]] = (114, 114, 114),
+) -> Tuple[np.ndarray, int]:
     assert img.shape[-1] == 3
 
     is_vertical = False
@@ -382,7 +387,7 @@ def wrap_letterbox(img: np.ndarray, target_size: int, color: Optional[Tuple[int,
         if is_odd:
             output_image[:, pad_amount : -pad_amount - 1, :] = img
         else:
-            output_image[:, pad_amount : -pad_amount, :] = img
+            output_image[:, pad_amount:-pad_amount, :] = img
 
         return output_image, 1
 
@@ -390,6 +395,6 @@ def wrap_letterbox(img: np.ndarray, target_size: int, color: Optional[Tuple[int,
         if is_odd:  # pad upper and bottom size
             output_image[pad_amount : -pad_amount - 1, :, :] = img
         else:
-            output_image[pad_amount : - pad_amount, :, :] = img
+            output_image[pad_amount:-pad_amount, :, :] = img
 
         return output_image, 0
