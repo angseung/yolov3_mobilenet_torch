@@ -19,7 +19,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
-import quantization_example_torch
 from torchvision.ops import nms
 from PIL import ImageFont, ImageDraw, Image
 
@@ -53,7 +52,7 @@ fontpath = "fonts/NanumBarunGothic.ttf"
 font = ImageFont.truetype(fontpath, 36)
 
 from models.common import DetectMultiBackend
-from utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages
+from utils.datasets import LoadImages
 from utils.general import (
     LOGGER,
     check_img_size,
@@ -76,14 +75,11 @@ from utils.augmentations import wrap_letterbox, letterbox
 @torch.no_grad()
 def run(
     weights=ROOT / "weights/107.pt",  # model.pt path(s)
-    source=ROOT / "data/cropped",  # file/dir/URL/glob, 0 for webcam
     imgsz=640,  # inference size (pixels)
     conf_thres=0.2,  # confidence threshold
     iou_thres=0.05,  # NMS IOU threshold
     max_det=300,  # maximum detections per image
     device="",  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-    save_txt=False,  # save results to *.txt
-    save_conf=False,  # save confidences in --save-txt labels
     classes=None,  # filter by class: --class 0, or --class 0 2 3
     agnostic_nms=False,  # class-agnostic NMS
     line_thickness=3,  # bounding box thickness (pixels)
@@ -136,7 +132,6 @@ def run(
         model.model.half() if half else model.model.float()
 
     # Dataloader
-    dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt and not jit)
     dt, seen = [0.0, 0.0, 0.0], 0
     cv2.namedWindow("demo")
 
@@ -274,7 +269,7 @@ def run(
         # Process predictions
         for i, det in enumerate(pred):  # per image
             seen += 1
-            im0, frame = im0s.copy(), getattr(dataset, "frame", 0)
+            im0 = im0s.copy()
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
 
@@ -296,16 +291,6 @@ def run(
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
-                    if save_txt:  # Write to file
-                        xywh = (
-                            (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn)
-                            .view(-1)
-                            .tolist()
-                        )  # normalized xywh
-                        line = (
-                            (cls, *xywh, conf) if save_conf else (cls, *xywh)
-                        )  # label format
-
                     if len(det.size()):  # Add bbox to image
                         c = int(cls)  # integer class
                         label = (
