@@ -363,6 +363,7 @@ def run(
                             annotator.box_label(xyxy, label, color=colors(c, True))
 
                         except ValueError:
+                            print("Error occured")
                             pass
 
             # Print time (inference-only)
