@@ -11,8 +11,6 @@ Usage:
                                                              'https://youtu.be/Zgi9g1ksQHc'  # YouTube
                                                              'rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP stream
 """
-import time
-from datetime import datetime
 import argparse
 import os
 import sys
@@ -21,9 +19,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
+import quantization_example_torch
 from torchvision.ops import nms
-import yaml
 from PIL import ImageFont, ImageDraw, Image
 
 try:
@@ -36,13 +33,16 @@ try:
 
     picam2 = Picamera2()
     resolution = (640, 360)
-    picam2.configure(picam2.create_preview_configuration(main={"format": 'RGB888', "size": resolution}))
+    picam2.configure(
+        picam2.create_preview_configuration(
+            main={"format": "RGB888", "size": resolution}
+        )
+    )
     picam2.start()
 
 except ImportError:
-    pass
+    raise RuntimeError("this code can be run only on Raspberry Pi")
 
-# cropped_imgsz = 320
 cropped_imgsz = 256
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
@@ -53,29 +53,25 @@ fontpath = "fonts/NanumBarunGothic.ttf"
 font = ImageFont.truetype(fontpath, 36)
 
 from models.common import DetectMultiBackend
-from utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
+from utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages
 from utils.general import (
     LOGGER,
-    check_file,
     check_img_size,
-    check_imshow,
     check_requirements,
-    colorstr,
-    increment_path,
     non_max_suppression,
     print_args,
     scale_coords,
-    strip_optimizer,
     xyxy2xywh,
 )
 
 from utils.classes_map import map_class_index_to_target
-from utils.plots import Annotator, colors, save_one_box
-from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
-from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
+from utils.plots import Annotator, colors
+from utils.torch_utils import select_device, time_sync, normalizer
+from utils.augment_utils import label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
 from utils.roi_utils import crop_region_of_plates, resize, rescale_roi
 from utils.augmentations import wrap_letterbox, letterbox
+
 
 @torch.no_grad()
 def run(
@@ -86,19 +82,10 @@ def run(
     iou_thres=0.05,  # NMS IOU threshold
     max_det=300,  # maximum detections per image
     device="",  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-    view_img=False,  # show results
     save_txt=False,  # save results to *.txt
     save_conf=False,  # save confidences in --save-txt labels
-    save_crop=False,  # save cropped prediction boxes
-    nosave=False,  # do not save images/videos
     classes=None,  # filter by class: --class 0, or --class 0 2 3
     agnostic_nms=False,  # class-agnostic NMS
-    augment=False,  # augmented inference
-    visualize=False,  # visualize features
-    update=False,  # update all models
-    project=ROOT / "runs/detect",  # save results to project/name
-    name="exp",  # save results to project/name
-    exist_ok=False,  # existing project/name ok, do not increment
     line_thickness=3,  # bounding box thickness (pixels)
     hide_labels=False,  # hide labels
     hide_conf=True,  # hide confidences
@@ -108,34 +95,15 @@ def run(
     gray=False,
     rm_doubled_bboxes=True,
     use_soft=False,
-    edge=False,
     print_string=True,
-    compile_model=False,
-    quantize_model=False,
     roi_crop=True,
     use_yolo=True,
-    show_best_epoch=False,
 ):
     assert not (
         normalize and gray
     )  # select gray or normalize. when selected both, escapes.
 
     plate_string = ""
-
-    # source = str(source)
-    # save_img = not nosave and not source.endswith(".txt")  # save inference images
-    # is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
-    # is_url = source.lower().startswith(("rtsp://", "rtmp://", "http://", "https://"))
-    # webcam = source.isnumeric() or source.endswith(".txt") or (is_url and not is_file)
-
-    # if is_url and is_file:
-    #     source = check_file(source)  # download
-
-    # Directories
-    # save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
-    # (save_dir / "labels" if save_txt else save_dir).mkdir(
-    #     parents=True, exist_ok=True
-    # )  # make dir
 
     # Load model
     device = select_device(device)
@@ -164,29 +132,15 @@ def run(
         if class_labels:
             model.names = class_labels
             names = class_labels
-
-    # Half
-    half &= (
-        pt and device.type != "cpu"
-    )  # half precision only supported by PyTorch on CUDA
     if pt:
         model.model.half() if half else model.model.float()
 
-
     # Dataloader
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt and not jit)
-    bs = 1  # batch_size
+    dt, seen = [0.0, 0.0, 0.0], 0
+    cv2.namedWindow("demo")
 
     # Run inference
-    # warm-up GPU with temporary tensor if device is not CPU
-    if pt and device.type != "cpu":
-        model(
-            torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters()))
-        )
-    dt, seen = [0.0, 0.0, 0.0], 0
-
-    cv2.namedWindow("demo")
-    
     while True:
         # im0s: HWC, BGR
         im0s = picam2.capture_array()
@@ -364,7 +318,6 @@ def run(
 
                         except ValueError:
                             print("Error occured")
-                            pass
 
             # Print time (inference-only)
             LOGGER.info(f"Done. ({t3 - t2:.3f}s)")
@@ -373,9 +326,16 @@ def run(
             im0 = annotator.result()
             img_pillow = Image.fromarray(im0)
             draw = ImageDraw.Draw(img_pillow)
-            
+
             if len(det.size()):
-                draw.text((10, 10), plate_string, font=font, fill=(0, 0, 0), stroke_width=2, stroke_fill=(255, 255, 255))
+                draw.text(
+                    (10, 10),
+                    plate_string,
+                    font=font,
+                    fill=(0, 0, 0),
+                    stroke_width=2,
+                    stroke_fill=(255, 255, 255),
+                )
 
             im0 = np.array(img_pillow)
 
@@ -388,7 +348,7 @@ def run(
                     (255, 0, 0),
                     5,
                 )
-        
+
         cv2.imshow("demo", im0)
         k = cv2.waitKey(1) & 0xFF
 
