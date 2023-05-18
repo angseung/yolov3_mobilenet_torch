@@ -36,12 +36,13 @@ try:
 
     picam2 = Picamera2()
     resolution = (640, 360)
-    picam2.configure(picam2.create_preview_configuration(main={"format": 'BGR888', "size": resolution}))
+    picam2.configure(picam2.create_preview_configuration(main={"format": 'RGB888', "size": resolution}))
     picam2.start()
 
 except ImportError:
     pass
 
+# cropped_imgsz = 320
 cropped_imgsz = 256
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
@@ -49,7 +50,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 fontpath = "fonts/NanumBarunGothic.ttf"
-font = ImageFont.truetype(fontpath, 48)
+font = ImageFont.truetype(fontpath, 36)
 
 from models.common import DetectMultiBackend
 from utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
@@ -78,12 +79,12 @@ from utils.augmentations import wrap_letterbox, letterbox
 
 @torch.no_grad()
 def run(
-    weights=ROOT / "yolov3.pt",  # model.pt path(s)
-    source=ROOT / "data/images",  # file/dir/URL/glob, 0 for webcam
-    imgsz=320,  # inference size (pixels)
-    conf_thres=0.25,  # confidence threshold
-    iou_thres=0.45,  # NMS IOU threshold
-    max_det=1000,  # maximum detections per image
+    weights=ROOT / "weights/107.pt",  # model.pt path(s)
+    source=ROOT / "data/cropped",  # file/dir/URL/glob, 0 for webcam
+    imgsz=640,  # inference size (pixels)
+    conf_thres=0.2,  # confidence threshold
+    iou_thres=0.05,  # NMS IOU threshold
+    max_det=300,  # maximum detections per image
     device="",  # cuda device, i.e. 0 or 0,1,2,3 or cpu
     view_img=False,  # show results
     save_txt=False,  # save results to *.txt
@@ -100,68 +101,52 @@ def run(
     exist_ok=False,  # existing project/name ok, do not increment
     line_thickness=3,  # bounding box thickness (pixels)
     hide_labels=False,  # hide labels
-    hide_conf=False,  # hide confidences
+    hide_conf=True,  # hide confidences
     half=False,  # use FP16 half-precision inference
     dnn=False,  # use OpenCV DNN for ONNX inference
     normalize=True,
     gray=False,
-    rm_doubled_bboxes=False,
+    rm_doubled_bboxes=True,
     use_soft=False,
     edge=False,
-    print_string=False,
+    print_string=True,
     compile_model=False,
     quantize_model=False,
-    roi_crop=False,
-    use_yolo=False,
+    roi_crop=True,
+    use_yolo=True,
     show_best_epoch=False,
 ):
     assert not (
         normalize and gray
     )  # select gray or normalize. when selected both, escapes.
 
-    # disable torch.compile if there is not any GPU
-    if compile_model and not torch.cuda.is_available():
-        compile_model = False
-
     plate_string = ""
 
-    source = str(source)
-    save_img = not nosave and not source.endswith(".txt")  # save inference images
-    is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
-    is_url = source.lower().startswith(("rtsp://", "rtmp://", "http://", "https://"))
-    webcam = source.isnumeric() or source.endswith(".txt") or (is_url and not is_file)
-    if is_url and is_file:
-        source = check_file(source)  # download
+    # source = str(source)
+    # save_img = not nosave and not source.endswith(".txt")  # save inference images
+    # is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
+    # is_url = source.lower().startswith(("rtsp://", "rtmp://", "http://", "https://"))
+    # webcam = source.isnumeric() or source.endswith(".txt") or (is_url and not is_file)
+
+    # if is_url and is_file:
+    #     source = check_file(source)  # download
 
     # Directories
-    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
-    (save_dir / "labels" if save_txt else save_dir).mkdir(
-        parents=True, exist_ok=True
-    )  # make dir
+    # save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+    # (save_dir / "labels" if save_txt else save_dir).mkdir(
+    #     parents=True, exist_ok=True
+    # )  # make dir
 
     # Load model
     device = select_device(device)
-
-    if show_best_epoch and "yaml" not in str(weights):
-        best_epoch = torch.load(weights, map_location=device)["epoch"]
-        print(f"loading best scored model, {best_epoch}th...")
 
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
 
     # use ROI detection with yolo
     if roi_crop and use_yolo:
-        # TODO: compare performance of each models, 201~204.pt
         pth_path = os.path.join(str(FILE.parents[0]), "weights", "202.pt")
         roi_model = DetectMultiBackend(pth_path, device=device, dnn=dnn)
         roi_model.model.float()
-
-    if compile_model:
-        model.model = torch.compile(model.model)  # compile inference model
-
-        if roi_crop and use_yolo:
-            roi_model.model = torch.compile(
-                roi_model.model
-            )  # compile roi detecting model
 
     stride, names, pt, jit, onnx = (
         model.stride,
@@ -172,7 +157,6 @@ def run(
     )
     imgsz = check_img_size(imgsz, s=stride)  # check image size
     transform_normalize = normalizer()
-    transform_to_gray = to_grayscale(num_output_channels=3)
 
     # Mapping class index to real value for yper data
     if len(names) == 84:
@@ -188,21 +172,10 @@ def run(
     if pt:
         model.model.half() if half else model.model.float()
 
-    if quantize_model:
-        raise NotImplementedError("Model quantizer for yolo model is not supported yet")
 
     # Dataloader
-    if webcam:
-        view_img = check_imshow()
-        cudnn.benchmark = True  # set True to speed up constant image size inference
-        dataset = LoadStreams(
-            source, img_size=imgsz, stride=stride, auto=pt and not jit
-        )
-        bs = len(dataset)  # batch_size
-    else:
-        dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt and not jit)
-        bs = 1  # batch_size
-    vid_path, vid_writer = [None] * bs, [None] * bs
+    dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt and not jit)
+    bs = 1  # batch_size
 
     # Run inference
     # warm-up GPU with temporary tensor if device is not CPU
@@ -212,21 +185,18 @@ def run(
         )
     dt, seen = [0.0, 0.0, 0.0], 0
 
-    # for path, im, im0s, vid_cap, s in dataset:
+    cv2.namedWindow("demo")
+    
     while True:
         # im0s: HWC, BGR
         im0s = picam2.capture_array()
-        im = letterbox(im0s, [imgsz, imgsz], stride=32, auto=True)
+        im = letterbox(im0s, [imgsz, imgsz], stride=32, auto=True)[0]
         im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
 
         # im:   CHW, RGB
         im = np.ascontiguousarray(im)
 
         t1 = time_sync()
-        if edge:
-            im = auto_canny(im.transpose([1, 2, 0]), return_rgb=True).transpose(
-                [2, 0, 1]
-            )
 
         if roi_crop:
             im_befroe_crop = im.copy()
@@ -287,19 +257,10 @@ def run(
         if normalize:
             im = transform_normalize(im)
 
-        if gray:
-            im = transform_to_gray(im)
-
         t2 = time_sync()
         dt[0] += t2 - t1
 
-        # Inference
-        visualize = (
-            increment_path(save_dir / Path(path).stem, mkdir=True)
-            if visualize
-            else False
-        )
-        pred = model(im, augment=augment, visualize=visualize)
+        pred = model(im, augment=False, visualize=False)
         t3 = time_sync()
         dt[1] += t3 - t2
 
@@ -356,49 +317,14 @@ def run(
 
         dt[2] += time_sync() - t3
 
-        # Second-stage classifier (optional)
-        # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
-
-        # dump inference config to opt.yaml
-        with open(save_dir / "opt.yaml", "w") as f:
-            global opt
-            opt_dict = vars(opt)
-            opt_dict["weights"] = str(opt_dict["weights"])
-            opt_dict["source"] = str(opt_dict["source"])
-
-            if isinstance(opt_dict["imgsz"], list):
-                opt_dict["imgsz"] = opt_dict["imgsz"][0]
-            else:
-                opt_dict["imgsz"] = str(opt_dict["imgsz"])
-
-            opt_dict["project"] = str(opt_dict["project"])
-
-            yaml.safe_dump(opt_dict, f, sort_keys=False)
-
         # Process predictions
         for i, det in enumerate(pred):  # per image
             seen += 1
-            if webcam:  # batch_size >= 1
-                p, im0, frame = path[i], im0s[i].copy(), dataset.count
-                s += f"{i}: "
-            else:
-                p, im0, frame = path, im0s.copy(), getattr(dataset, "frame", 0)
-
-            p = Path(p)  # to Path
-            save_path = str(save_dir / p.name)  # im.jpg
-            txt_path = str(save_dir / "labels" / p.stem) + (
-                "" if dataset.mode == "image" else f"_{frame}"
-            )  # im.txt
-            s += "%gx%g " % im.shape[2:]  # print string
+            im0, frame = im0s.copy(), getattr(dataset, "frame", 0)
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-            imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
 
-            # for video detect applications...
-            if Path(source).suffix[1:] in VID_FORMATS and i >= 1 and print_string:
-                plate_string = plate_string
-
-            if len(det):
+            if len(det.size()):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
@@ -414,11 +340,6 @@ def run(
                         else ""
                     )
 
-                # Print results
-                for c in det[:, -1].unique():
-                    n = (det[:, -1] == c).sum()  # detections per class
-                    s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
@@ -430,36 +351,35 @@ def run(
                         line = (
                             (cls, *xywh, conf) if save_conf else (cls, *xywh)
                         )  # label format
-                        with open(txt_path + ".txt", "a") as f:
-                            f.write(("%g " * len(line)).rstrip() % line + "\n")
 
-                    if save_img or save_crop or view_img:  # Add bbox to image
+                    if len(det.size()):  # Add bbox to image
                         c = int(cls)  # integer class
                         label = (
                             None
                             if hide_labels
                             else (names[c] if hide_conf else f"{names[c]} {conf:.2f}")
                         )
-                        annotator.box_label(xyxy, label, color=colors(c, True))
-                        # if save_crop:
-                        #     save_one_box(
-                        #         xyxy,
-                        #         imc,
-                        #         file=save_dir / "crops" / names[c] / f"{p.stem}.jpg",
-                        #         BGR=True,
-                        #     )
+                        try:
+                            annotator.box_label(xyxy, label, color=colors(c, True))
+
+                        except ValueError:
+                            pass
 
             # Print time (inference-only)
-            LOGGER.info(f"{s}Done. ({t3 - t2:.3f}s)")
+            LOGGER.info(f"Done. ({t3 - t2:.3f}s)")
 
             # Stream results
             im0 = annotator.result()
             img_pillow = Image.fromarray(im0)
             draw = ImageDraw.Draw(img_pillow)
-            draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
+            
+            if len(det.size()):
+                draw.text((10, 10), plate_string, font=font, fill=(0, 0, 0), stroke_width=2, stroke_fill=(255, 255, 255))
+
             im0 = np.array(img_pillow)
 
-            if roi_crop:
+            # print plate string on im0
+            if roi_crop and len(det):
                 im0 = cv2.rectangle(
                     im0,
                     (scaled_xtl_crop, scaled_ytl_crop),
@@ -467,47 +387,9 @@ def run(
                     (255, 0, 0),
                     5,
                 )
-
-            # if view_img:
-            #     cv2.imshow(str(p), im0)
-            #     cv2.waitKey(1)  # 1 millisecond
-
-            # Save results (image with detections)
-            # if save_img:
-            #     if dataset.mode == "image":
-            #         cv2.imwrite(save_path, im0)
-                # else:  # 'video' or 'stream'
-                #     if vid_path[i] != save_path:  # new video
-                #         vid_path[i] = save_path
-                #         if isinstance(vid_writer[i], cv2.VideoWriter):
-                #             vid_writer[i].release()  # release previous video writer
-                #         if vid_cap:  # video
-                #             fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                #             w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                #             h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                #         else:  # stream
-                #             fps, w, h = 30, im0.shape[1], im0.shape[0]
-                #             save_path += ".mp4"
-                #         vid_writer[i] = cv2.VideoWriter(
-                #             save_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h)
-                #         )
-                #     vid_writer[i].write(im0)
-
-    # Print results
-    t = tuple(x / seen * 1e3 for x in dt)  # speeds per image
-    LOGGER.info(
-        f"Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}"
-        % t
-    )
-    if save_txt or save_img:
-        s = (
-            f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}"
-            if save_txt
-            else ""
-        )
-        LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
-    if update:
-        strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
+        
+        cv2.imshow("demo", im0)
+        k = cv2.waitKey(1) & 0xFF
 
 
 def parse_opt():
@@ -515,7 +397,7 @@ def parse_opt():
     parser.add_argument(
         "--weights",
         type=str,
-        default=ROOT / "yolov3-nano.yaml",
+        default=ROOT / "weights/107.pt",
         help="model path(s)",
     )
     parser.add_argument(
@@ -530,7 +412,7 @@ def parse_opt():
         "--img-size",
         nargs="+",
         type=int,
-        default=[320],
+        default=[640],
         help="inference size h,w",
     )
     parser.add_argument(
@@ -626,7 +508,7 @@ def parse_opt():
 
 def main(opt):
     check_requirements(exclude=("tensorboard", "thop"))
-    run(**vars(opt))
+    run()
 
 
 if __name__ == "__main__":
