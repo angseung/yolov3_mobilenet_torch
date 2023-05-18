@@ -15,6 +15,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import *
 
 import cv2
 import numpy as np
@@ -25,19 +26,6 @@ from PIL import ImageFont, ImageDraw, Image
 try:
     import RPi.GPIO as GPIO
     from picamera2 import Picamera2
-
-    btnPin = 18
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(btnPin, GPIO.IN, GPIO.PUD_UP)
-
-    picam2 = Picamera2()
-    resolution = (640, 360)
-    picam2.configure(
-        picam2.create_preview_configuration(
-            main={"format": "RGB888", "size": resolution}
-        )
-    )
-    picam2.start()
 
 except ImportError:
     raise RuntimeError("this code can be run only on Raspberry Pi")
@@ -95,6 +83,8 @@ def run(
     roi_crop=True,
     use_yolo=True,
 ):
+
+    picam2 = init_cam(pin_num=18, color_format="RGB888")
     assert not (
         normalize and gray
     )  # select gray or normalize. when selected both, escapes.
@@ -335,128 +325,28 @@ def run(
                 )
 
         cv2.imshow("demo", im0)
-        k = cv2.waitKey(1) & 0xFF
+        cv2.waitKey(1)
 
 
-def parse_opt():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--weights",
-        type=str,
-        default=ROOT / "weights/107.pt",
-        help="model path(s)",
+def init_cam(pin_num: int = 18, resolution: Union[Tuple[int, int], int] = (640, 360), color_format: str = "RGB888"):
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(pin_num, GPIO.IN, GPIO.PUD_UP)
+
+    picam2 = Picamera2()
+    picam2.configure(
+        picam2.create_preview_configuration(
+            main={"format": color_format, "size": resolution}
+        )
     )
-    parser.add_argument(
-        "--source",
-        type=str,
-        default=ROOT / "data/images",
-        help="file/dir/URL/glob, 0 for webcam",
-    )
-    parser.add_argument(
-        "--imgsz",
-        "--img",
-        "--img-size",
-        nargs="+",
-        type=int,
-        default=[640],
-        help="inference size h,w",
-    )
-    parser.add_argument(
-        "--compile-model", action="store_true", help="compile model (GPU ONLY)"
-    )
-    parser.add_argument(
-        "--quantize-model", action="store_true", help="quantize model (CPU ONLY)"
-    )
-    parser.add_argument(
-        "--normalize", action="store_true", help="apply normalizer or not"
-    )
-    parser.add_argument(
-        "--print-string", action="store_true", help="apply normalizer or not"
-    )
-    parser.add_argument(
-        "--rm-doubled-bboxes", action="store_true", help="use additional nms"
-    )
-    parser.add_argument("--gray", action="store_true", help="apply grayscale or not")
-    parser.add_argument("--edge", action="store_true", help="apply canny edge or not")
-    parser.add_argument(
-        "--conf-thres", type=float, default=0.25, help="confidence threshold"
-    )
-    parser.add_argument(
-        "--iou-thres", type=float, default=0.45, help="NMS IoU threshold"
-    )
-    parser.add_argument(
-        "--use-soft", action="store_true", help="use soft nms rather than normal nms"
-    )
-    parser.add_argument(
-        "--roi-crop", action="store_true", help="crop input around the roi"
-    )
-    parser.add_argument(
-        "--use-yolo", action="store_true", help="crop input around the roi"
-    )
-    parser.add_argument(
-        "--max-det", type=int, default=1000, help="maximum detections per image"
-    )
-    parser.add_argument(
-        "--device", default="", help="cuda device, i.e. 0 or 0,1,2,3 or cpu"
-    )
-    parser.add_argument("--view-img", action="store_true", help="show results")
-    parser.add_argument("--save-txt", action="store_true", help="save results to *.txt")
-    parser.add_argument(
-        "--save-conf", action="store_true", help="save confidences in --save-txt labels"
-    )
-    parser.add_argument(
-        "--save-crop", action="store_true", help="save cropped prediction boxes"
-    )
-    parser.add_argument(
-        "--nosave", action="store_true", help="do not save images/videos"
-    )
-    parser.add_argument(
-        "--classes",
-        nargs="+",
-        type=int,
-        help="filter by class: --classes 0, or --classes 0 2 3",
-    )
-    parser.add_argument(
-        "--agnostic-nms", action="store_true", help="class-agnostic NMS"
-    )
-    parser.add_argument("--augment", action="store_true", help="augmented inference")
-    parser.add_argument("--visualize", action="store_true", help="visualize features")
-    parser.add_argument("--update", action="store_true", help="update all models")
-    parser.add_argument(
-        "--project", default=ROOT / "runs/detect", help="save results to project/name"
-    )
-    parser.add_argument("--name", default="exp", help="save results to project/name")
-    parser.add_argument(
-        "--exist-ok",
-        action="store_true",
-        help="existing project/name ok, do not increment",
-    )
-    parser.add_argument(
-        "--line-thickness", default=3, type=int, help="bounding box thickness (pixels)"
-    )
-    parser.add_argument(
-        "--hide-labels", default=False, action="store_true", help="hide labels"
-    )
-    parser.add_argument(
-        "--hide-conf", default=False, action="store_true", help="hide confidences"
-    )
-    parser.add_argument(
-        "--half", action="store_true", help="use FP16 half-precision inference"
-    )
-    parser.add_argument(
-        "--dnn", action="store_true", help="use OpenCV DNN for ONNX inference"
-    )
-    opt = parser.parse_args()
-    opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
-    print_args(FILE.stem, opt)
-    return opt
+    picam2.start()
+
+    return picam2
 
 
-def main(opt):
+def main():
     check_requirements(exclude=("tensorboard", "thop"))
     run()
 
 
 if __name__ == "__main__":
-    opt = parse_opt()
-    main(opt)
+    main()
