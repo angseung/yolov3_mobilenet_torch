@@ -38,15 +38,11 @@ fontpath = "fonts/NanumBarunGothic.ttf"
 font = ImageFont.truetype(fontpath, 36)
 
 from models.common import DetectMultiBackend
-from utils.datasets import LoadImages
 from utils.general import (
-    LOGGER,
     check_img_size,
     check_requirements,
     non_max_suppression,
-    print_args,
     scale_coords,
-    xyxy2xywh,
 )
 
 from utils.classes_map import map_class_index_to_target
