@@ -187,9 +187,12 @@ class QuantModel(nn.Module):
         return x
 
 
-class QuantizeYolo:
+class QuantizedYolo(nn.Module):
     def __init__(self, fname: str = "yolov3-qat.pt"):
+        super().__init__()
+        self.quant = torch.ao.quantization.QuantStub()
         self.model = torch.load(os.path.join(ROOT, fname), map_location=torch.device("cpu")).eval()  # nn.Sequential
+        self.dequant = torch.ao.quantization.DeQuantStub()
 
     def fuse_model(self):
         for i, block in self.model.model.named_children():
@@ -201,14 +204,25 @@ class QuantizeYolo:
                     if isinstance(sub_block, ConvBnReLU):
                         fuse_modules(sub_block, [['conv', 'bn', 'act']], inplace=True)
 
-            # TODO: Implement fusing function for other blocks
+            # TODO: Implement fusing codes for other blocks here...
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quant(x)
+        x = self.model(x)
+        x = self.dequant(x)
+
+        return x
 
 
 if __name__ == "__main__":
     # create a model instance
     architecture = platform.uname().machine
 
-    QuantizeYolo().fuse_model()
+    yolo_qint8 = QuantizedYolo()
+    yolo_qint8.fuse_model()
+    torch.ao.quantization.prepare(yolo_qint8, inplace=True)
+    yolo_qint8(torch.randn(1, 3, 320, 320))
+    torch.ao.quantization.convert(yolo_qint8, inplace=True)
 
     # model_fp32 = ResNet18().eval()
     model_fp32 = M().eval()
