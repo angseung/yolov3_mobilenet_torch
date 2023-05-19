@@ -21,7 +21,7 @@ import torch
 import torch.nn as nn
 from PIL import Image
 from torch.cuda import amp
-from torch.nn.quantized import FloatFunctional
+from torch.ao.nn.quantized import FloatFunctional
 from torchvision.models import MobileNetV2 as mbnet
 
 from utils.datasets import exif_transpose, letterbox
@@ -76,7 +76,7 @@ class Conv(nn.Module):
         return self.act(self.conv(x))
 
 
-class ConvBnRelu(nn.Module):
+class ConvBnReLU(nn.Module):
     # Standard convolution
     def __init__(
         self, c1, c2, k=1, s=1, p=None, g=1, act=True
@@ -225,13 +225,13 @@ class BottleneckReLU(nn.Module):
         c_ = int(c2 * e)  # hidden channels
 
         # (in_channels, out_channels, kernel_size, strides)
-        self.cv1 = ConvBnRelu(c1, c_, 1, 1)  # pconv
-        self.cv2 = ConvBnRelu(c_, c2, 3, 1, g=g)
+        self.cv1 = ConvBnReLU(c1, c_, 1, 1)  # pconv
+        self.cv2 = ConvBnReLU(c_, c2, 3, 1, g=g)
         self.add = shortcut and c1 == c2
-        self.skip_add = nn.quantized.FloatFunctional()
+        self.skip_add = FloatFunctional()
 
     def forward(self, x):
-        return self.skip_add(x, self.cv2(self.cv1(x))) if self.add else self.cv2(self.cv1(x))
+        return self.skip_add.add(x, self.cv2(self.cv1(x))) if self.add else self.cv2(self.cv1(x))
 
 
 class DWSBottleneck(nn.Module):
