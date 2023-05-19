@@ -5,7 +5,7 @@ Image augmentation functions
 
 import math
 import random
-
+from typing import *
 import cv2
 import numpy as np
 
@@ -352,3 +352,49 @@ def box_candidates(
         & (w2 * h2 / (w1 * h1 + eps) > area_thr)
         & (ar < ar_thr)
     )  # candidates
+
+
+def wrap_letterbox(
+    img: np.ndarray,
+    target_size: int,
+    color: Optional[Tuple[int, int, int]] = (114, 114, 114),
+) -> Tuple[np.ndarray, int]:
+    assert img.shape[-1] == 3
+
+    is_vertical = False
+    is_odd = False
+
+    height, width = img.shape[:2]
+
+    if height > width:
+        is_vertical = True
+
+    if min(width, height) % 2 == 1:
+        is_odd = True
+
+    # make background of an output image
+    output_image = np.zeros((target_size, target_size, 3)).astype(np.uint8)
+    output_image[:, :, 0] = color[0]
+    output_image[:, :, 1] = color[1]
+    output_image[:, :, 2] = color[2]
+
+    pad_amount = (target_size - min(width, height)) // 2
+
+    if pad_amount == 0:
+        return img, 0
+
+    elif is_vertical:  # pad left and right side
+        if is_odd:
+            output_image[:, pad_amount : -pad_amount - 1, :] = img
+        else:
+            output_image[:, pad_amount:-pad_amount, :] = img
+
+        return output_image, 1
+
+    else:
+        if is_odd:  # pad upper and bottom size
+            output_image[pad_amount : -pad_amount - 1, :, :] = img
+        else:
+            output_image[pad_amount:-pad_amount, :, :] = img
+
+        return output_image, 0

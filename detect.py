@@ -21,11 +21,11 @@ import cv2
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
-import torch.nn as nn
 from torchvision.ops import nms
 import yaml
 from PIL import ImageFont, ImageDraw, Image
 
+cropped_imgsz = 256
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
 if str(ROOT) not in sys.path:
@@ -54,9 +54,10 @@ from utils.general import (
 from utils.classes_map import map_class_index_to_target
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync, normalizer, to_grayscale
-from utils.augment_utils import auto_canny
+from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
-from utils.quantization_utils import static_quantizer
+from utils.roi_utils import crop_region_of_plates, resize, rescale_roi
+from utils.augmentations import wrap_letterbox
 
 
 @torch.no_grad()
@@ -95,6 +96,8 @@ def run(
     compile_model=False,
     quantize_model=False,
     roi_crop=False,
+    use_yolo=False,
+    show_best_epoch=False,
 ):
     assert not (
         normalize and gray
@@ -123,14 +126,26 @@ def run(
     # Load model
     device = select_device(device)
 
-    if "yaml" not in str(weights):
+    if show_best_epoch and "yaml" not in str(weights):
         best_epoch = torch.load(weights, map_location=device)["epoch"]
         print(f"loading best scored model, {best_epoch}th...")
 
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
 
+    # use ROI detection with yolo
+    if roi_crop and use_yolo:
+        # TODO: compare performance of each models, 201~204.pt
+        pth_path = os.path.join(str(FILE.parents[0]), "weights", "202.pt")
+        roi_model = DetectMultiBackend(pth_path, device=device, dnn=dnn)
+        roi_model.model.float()
+
     if compile_model:
-        model.model = torch.compile(model.model)
+        model.model = torch.compile(model.model)  # compile inference model
+
+        if roi_crop and use_yolo:
+            roi_model.model = torch.compile(
+                roi_model.model
+            )  # compile roi detecting model
 
     stride, names, pt, jit, onnx = (
         model.stride,
@@ -158,10 +173,7 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
-        # raise NotImplementedError
-        model = model.to("cpu")
-        device = torch.device("cpu")
-        model.model = static_quantizer(model.model, configs=None)
+        raise NotImplementedError("Model quantizer for yolo model is not supported yet")
 
     # Dataloader
     if webcam:
@@ -190,18 +202,65 @@ def run(
                 [2, 0, 1]
             )
 
-        # insert ROI crop function here...
         if roi_crop:
-            raise NotImplementedError
+            im_befroe_crop = im.copy()
+            xtl_crop, ytl_crop, xbr_crop, ybr_crop = crop_region_of_plates(
+                img=im.copy().transpose([1, 2, 0]),
+                model=roi_model if use_yolo else None,
+                target_imgsz=cropped_imgsz,
+                char_size=25,
+                imgsz=imgsz,
+                use_yolo=use_yolo,
+                top_only=True,
+                img_show_opt=False,
+                return_as_img=False,
+            )
 
-        im = torch.from_numpy(im).to(device)
+            # crop around the roi
+            im_before_letterboxed = im[
+                :, ytl_crop:ybr_crop, xtl_crop:xbr_crop
+            ].transpose(
+                [1, 2, 0]
+            )  # (H, W, C)
+            size_of_im_before_letterboxed = im_before_letterboxed.shape
+            (
+                scaled_xtl_crop,
+                scaled_ytl_crop,
+                scaled_xbr_crop,
+                scaled_ybr_crop,
+            ) = rescale_roi(
+                region_of_roi=(xtl_crop, ytl_crop, xbr_crop, ybr_crop),
+                prev_shape=im0s.shape[:2],
+                resized_shape=im_befroe_crop.shape[1:],
+            )
+
+            # resize image
+            im_before_letterboxed_resized = resize(im_before_letterboxed, cropped_imgsz)
+            size_of_im_before_letterboxed_resized = im_before_letterboxed_resized.shape
+
+            # pad img to make square-shape
+            im, pad_axis = wrap_letterbox(
+                im_before_letterboxed_resized, target_size=cropped_imgsz
+            )  # (H, W, C)
+
+            # convert channel first to last and BGR to RGB
+            im = im.transpose((2, 0, 1))[::-1]  # (C, H, W)
+
+            # calculate additional offset between letterboxed one and cropped one
+            pad_offset = (
+                cropped_imgsz - min(*im_before_letterboxed_resized.shape[:2])
+            ) // 2
+
+        im = torch.from_numpy(im.copy()).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
+
         if len(im.shape) == 3:
             im = im[None]  # expand for batch dim
 
         if normalize:
             im = transform_normalize(im)
+
         if gray:
             im = transform_to_gray(im)
 
@@ -237,6 +296,37 @@ def run(
                 .tolist()
             )
             pred = [pred[0][tmp]]
+
+        # compensate point offset if im is cropped
+        if roi_crop:
+            # pred: [xtl, ytl, xbr, ybr, conf, label] in VOC format
+            pred_numpy = pred[0].numpy()
+
+            # step 1. compensate padding offset
+            if pad_axis == 0:
+                pred_numpy[:, [1, 3]] -= pad_offset
+            else:
+                pred_numpy[:, [0, 2]] -= pad_offset
+
+            # step 2. rescale bboxes
+            pred_numpy_yolo = label_voc2yolo(
+                pred_numpy[:, [5, 0, 1, 2, 3]],
+                *size_of_im_before_letterboxed_resized[:2],
+            )
+            pred_numpy_scaled = label_yolo2voc(
+                pred_numpy_yolo, *size_of_im_before_letterboxed[:2]
+            )
+            pred_numpy[:, [0, 1, 2, 3]] = pred_numpy_scaled[:, 1:]
+
+            # step 2. compensate crop offset
+            pred_numpy[:, [0, 2]] += xtl_crop
+            pred_numpy[:, [1, 3]] += ytl_crop
+
+            # step 3. convert numpy ndarray to torch tensor
+            pred = [torch.from_numpy(pred_numpy)]
+
+            # finally, replace im to original one
+            im = im_befroe_crop.copy()[None]
 
         dt[2] += time_sync() - t3
 
@@ -343,6 +433,15 @@ def run(
             draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
             im0 = np.array(img_pillow)
 
+            if roi_crop:
+                im0 = cv2.rectangle(
+                    im0,
+                    (scaled_xtl_crop, scaled_ytl_crop),
+                    (scaled_xbr_crop, scaled_ybr_crop),
+                    (255, 0, 0),
+                    5,
+                )
+
             if view_img:
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
@@ -436,6 +535,9 @@ def parse_opt():
     )
     parser.add_argument(
         "--roi-crop", action="store_true", help="crop input around the roi"
+    )
+    parser.add_argument(
+        "--use-yolo", action="store_true", help="crop input around the roi"
     )
     parser.add_argument(
         "--max-det", type=int, default=1000, help="maximum detections per image"
