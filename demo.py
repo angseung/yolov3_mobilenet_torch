@@ -11,7 +11,6 @@ Usage:
                                                              'https://youtu.be/Zgi9g1ksQHc'  # YouTube
                                                              'rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP stream
 """
-import argparse
 import os
 import sys
 from pathlib import Path
@@ -30,7 +29,6 @@ try:
 except ImportError:
     raise RuntimeError("this code can be run only on Raspberry Pi")
 
-cropped_imgsz = 256
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
 if str(ROOT) not in sys.path:
@@ -64,6 +62,7 @@ from utils.augmentations import wrap_letterbox, letterbox
 def run(
     weights=ROOT / "weights/107.pt",  # model.pt path(s)
     imgsz=640,  # inference size (pixels)
+    cropped_imgsz=256,
     conf_thres=0.2,  # confidence threshold
     iou_thres=0.05,  # NMS IOU threshold
     max_det=300,  # maximum detections per image
@@ -121,22 +120,18 @@ def run(
     if pt:
         model.model.half() if half else model.model.float()
 
-    # Dataloader
-    dt, seen = [0.0, 0.0, 0.0], 0
+    dt, seen = [0.0, 0.0, 0.0, 0.0], 0
     cv2.namedWindow("demo")
 
     # Run inference
     while True:
-        # im0s: HWC, BGR
-        im0s = picam2.capture_array()
+        t1 = time_sync()
+        im0s = picam2.capture_array()  # im0s: HWC, BGR
         im = letterbox(im0s, [imgsz, imgsz], stride=32, auto=True)[0]
         im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        im = np.ascontiguousarray(im)  # im: CHW, RGB
 
-        # im:   CHW, RGB
-        im = np.ascontiguousarray(im)
-
-        t1 = time_sync()
-
+        # crop with ROI detector
         if roi_crop:
             im_befroe_crop = im.copy()
             xtl_crop, ytl_crop, xbr_crop, ybr_crop = crop_region_of_plates(
@@ -173,7 +168,7 @@ def run(
             im_before_letterboxed_resized = resize(im_before_letterboxed, cropped_imgsz)
             size_of_im_before_letterboxed_resized = im_before_letterboxed_resized.shape
 
-            # pad img to make square-shape
+            # pad img to make square-shaped img
             im, pad_axis = wrap_letterbox(
                 im_before_letterboxed_resized, target_size=cropped_imgsz
             )  # (H, W, C)
@@ -197,11 +192,11 @@ def run(
             im = transform_normalize(im)
 
         t2 = time_sync()
-        dt[0] += t2 - t1
+        dt[0] += t2 - t1  # elapsed time to preprocess
 
         pred = model(im, augment=False, visualize=False)
         t3 = time_sync()
-        dt[1] += t3 - t2
+        dt[1] += t3 - t2  # elapsed time to inference
 
         # NMS
         pred = non_max_suppression(
@@ -254,13 +249,13 @@ def run(
             # finally, replace im to original one
             im = im_befroe_crop.copy()[None]
 
-        dt[2] += time_sync() - t3
+        t4 = time_sync()
+        dt[2] += t4 - t3  # elapsed time to nms
 
         # Process predictions
         for i, det in enumerate(pred):  # per image
             seen += 1
             im0 = im0s.copy()
-            gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
 
             if len(det.size()):
@@ -294,9 +289,6 @@ def run(
                         except ValueError:
                             print("Error occured")
 
-            # Print time (inference-only)
-            LOGGER.info(f"Done. ({t3 - t2:.3f}s)")
-
             # Stream results
             im0 = annotator.result()
             img_pillow = Image.fromarray(im0)
@@ -323,6 +315,9 @@ def run(
                     (255, 0, 0),
                     5,
                 )
+
+        dt[3] += time_sync() - t4  # elapsed time to draw bboxes and plate string
+        print(f"curr FPS: {(1 / (dt[3] - dt[0])): .4f}")
 
         cv2.imshow("demo", im0)
         cv2.waitKey(1)
