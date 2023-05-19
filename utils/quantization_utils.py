@@ -1,6 +1,8 @@
+import os.path
 import platform
 import copy
 from typing import *
+from pathlib import Path
 import torch
 from torch import nn as nn
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
@@ -8,6 +10,9 @@ from torch.ao.quantization import quantize_dynamic
 from torch.ao.nn.quantized import Conv2d as qConv2d
 from models.resnet import resnet18 as ResNet18
 from models.resnet import resnet152 as ResNet152
+
+FILE = Path(__file__).resolve()
+ROOT = FILE.parent.parent  # root directory
 
 
 class AddModel(nn.Module):
@@ -180,9 +185,20 @@ class QuantModel(nn.Module):
         return x
 
 
+class QuantizeYolo:
+    def __init__(self, fname: str = "yolov3-qat.pt"):
+        self.model = torch.load(os.path.join(ROOT, fname), map_location=torch.device("cpu"))  # nn.Sequential
+
+    def fuse_model(self):
+        for i, block in self.model.model.named_children():
+            pass
+
+
 if __name__ == "__main__":
     # create a model instance
     architecture = platform.uname().machine
+
+    QuantizeYolo().fuse_model()
 
     # model_fp32 = ResNet18().eval()
     model_fp32 = M().eval()
