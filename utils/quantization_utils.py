@@ -5,11 +5,13 @@ from typing import *
 from pathlib import Path
 import torch
 from torch import nn as nn
+from torch.ao.quantization import fuse_modules
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
 from torch.ao.nn.quantized import Conv2d as qConv2d
 from models.resnet import resnet18 as ResNet18
 from models.resnet import resnet152 as ResNet152
+from models.common import ConvBnReLU, BottleneckReLU
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parent.parent  # root directory
@@ -187,11 +189,19 @@ class QuantModel(nn.Module):
 
 class QuantizeYolo:
     def __init__(self, fname: str = "yolov3-qat.pt"):
-        self.model = torch.load(os.path.join(ROOT, fname), map_location=torch.device("cpu"))  # nn.Sequential
+        self.model = torch.load(os.path.join(ROOT, fname), map_location=torch.device("cpu")).eval()  # nn.Sequential
 
     def fuse_model(self):
         for i, block in self.model.model.named_children():
-            pass
+            if isinstance(block, ConvBnReLU):
+                fuse_modules(block, [['conv', 'bn', 'act']], inplace=True)
+
+            elif isinstance(block, BottleneckReLU):
+                for j, sub_block in block.named_children():
+                    if isinstance(sub_block, ConvBnReLU):
+                        fuse_modules(sub_block, [['conv', 'bn', 'act']], inplace=True)
+
+            # TODO: Implement fusing function for other blocks
 
 
 if __name__ == "__main__":
