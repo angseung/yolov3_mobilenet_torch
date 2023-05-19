@@ -25,7 +25,7 @@ from torchvision.ops import nms
 import yaml
 from PIL import ImageFont, ImageDraw, Image
 
-cropped_imgsz = 320
+cropped_imgsz = 256
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
 if str(ROOT) not in sys.path:
@@ -208,6 +208,7 @@ def run(
                 img=im.copy().transpose([1, 2, 0]),
                 model=roi_model if use_yolo else None,
                 target_imgsz=cropped_imgsz,
+                char_size=25,
                 imgsz=imgsz,
                 use_yolo=use_yolo,
                 top_only=True,

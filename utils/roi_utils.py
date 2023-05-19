@@ -236,7 +236,7 @@ def find_roi(img: np.ndarray, img_thresh: np.ndarray) -> List[Dict[str, int]]:
     for idx_list in result_idx:
         matched_result.append(np.take(possible_contours, idx_list))
 
-    plate_infos = contour_to_plate_region(matched_result)
+    plate_infos = contour_to_plate_region_rev(matched_result)
 
     return plate_infos
 
@@ -305,7 +305,43 @@ def clip(val: int, lower: int = 0, higher: int = 255) -> int:
         return higher
 
 
-def contour_to_plate_region(matched_result: List[np.ndarray]) -> List:
+def contour_to_plate_region(matched_result: List[np.ndarray], char_size: int = 25) -> Tuple[List, float]:
+    plate_infos = []
+
+    for i, matched_chars in enumerate(matched_result):
+        sorted_chars = sorted(matched_chars, key=lambda x: x["cx"])
+        char_height_list = [sorted_chars[i]["h"] for i in range(len(sorted_chars))]
+        char_height_mean = np.mean(char_height_list)
+        crop_ratio = char_size / char_height_mean
+
+        plate_cx = (sorted_chars[0]["cx"] + sorted_chars[-1]["cx"]) / 2
+        plate_cy = (sorted_chars[0]["cy"] + sorted_chars[-1]["cy"]) / 2
+
+        plate_width = (
+            sorted_chars[-1]["x"] + sorted_chars[-1]["w"] - sorted_chars[0]["x"]
+        )
+
+        sum_height = 0
+
+        for d in sorted_chars:
+            sum_height += d["h"]
+
+        plate_height = int(sum_height / len(sorted_chars) * PLATE_HEIGHT_PADDING)
+        plate_infos.append(
+            {
+                "x": int(plate_cx - plate_width / 2),
+                "y": int(plate_cy - plate_height / 2),
+                "w": int(plate_width),
+                "h": int(plate_height),
+            }
+        )
+
+        break
+
+    return plate_infos, crop_ratio
+
+
+def contour_to_plate_region_rev(matched_result: List[np.ndarray]) -> List:
     plate_infos = []
 
     for i, matched_chars in enumerate(matched_result):
@@ -402,7 +438,7 @@ def detect_roi_with_yolo(
         matched_result = [np.array(contours)]
 
         # convert contours of chars to contours of region of plate
-        contours = contour_to_plate_region(matched_result)
+        contours, crop_ratio = contour_to_plate_region(matched_result, char_size=25)
 
         return contours
 
@@ -415,6 +451,7 @@ def crop_region_of_plates(
     model: Union[nn.Module, None],
     target_imgsz: int = 320,
     imgsz: Union[int, None, List[int]] = 640,
+    char_size: int = 25,
     use_yolo: bool = False,
     top_only: bool = True,
     img_show_opt: bool = False,
