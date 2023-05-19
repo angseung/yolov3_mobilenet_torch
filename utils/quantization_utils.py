@@ -28,14 +28,20 @@ class M(torch.nn.Module):
         self.conv = torch.nn.Conv2d(
             3, 32, kernel_size=3, stride=1, padding=1, bias=False
         )
+        self.upsample = torch.nn.Upsample(scale_factor=2, mode="bilinear")  # Success
+        # self.upsample = torch.nn.Upsample(scale_factor=2, mode="nearest")  # Success
         self.bn = torch.nn.BatchNorm2d(32)
+        self.concat = torch.cat  # Success
         self.relu = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, x):
         x = self.conv(x)
+        x = self.upsample(x)
         x = self.bn(x)
+        x1 = x.clone()
         x = self.relu(x)
+        x = self.concat([x, x1], dim=1)
         x = self.sigmoid(x)
         return x
 
