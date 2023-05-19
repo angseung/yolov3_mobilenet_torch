@@ -315,9 +315,9 @@ def run(
                     (255, 0, 0),
                     5,
                 )
-
-        dt[3] += time_sync() - t4  # elapsed time to draw bboxes and plate string
-        print(f"curr FPS: {(1 / (dt[3] - dt[0])): .4f}")
+        t5 = time_sync()
+        dt[3] += t5 - t4  # elapsed time to draw bboxes and plate string
+        print(f"curr FPS: {(1 / (t5 - t1)): .4f}")
 
         cv2.imshow("demo", im0)
         cv2.waitKey(1)
