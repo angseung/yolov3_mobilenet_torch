@@ -203,8 +203,17 @@ class QuantizedYolo(nn.Module):
                 for j, sub_block in block.named_children():
                     if isinstance(sub_block, ConvBnReLU):
                         fuse_modules(sub_block, [['conv', 'bn', 'act']], inplace=True)
-
             # TODO: Implement fusing codes for other blocks here...
+
+    def check_fused_layers(self):
+        for i, block in self.model.model.named_children():
+            if isinstance(block, ConvBnReLU):
+                print(block)
+
+            elif isinstance(block, BottleneckReLU):
+                for j, sub_block in block.named_children():
+                    if isinstance(sub_block, ConvBnReLU):
+                        print(sub_block)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quant(x)
@@ -220,6 +229,7 @@ if __name__ == "__main__":
 
     yolo_qint8 = QuantizedYolo()
     yolo_qint8.fuse_model()
+    yolo_qint8.check_fused_layers()
     torch.ao.quantization.prepare(yolo_qint8, inplace=True)
     yolo_qint8(torch.randn(1, 3, 320, 320))
     torch.ao.quantization.convert(yolo_qint8, inplace=True)
