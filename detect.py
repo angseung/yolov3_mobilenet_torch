@@ -135,7 +135,7 @@ def run(
 
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
     if quantize_model:
-        model_head = copy.deepcopy(model.model)
+        model_head = copy.deepcopy(model)
 
     # use ROI detection with yolo
     if roi_crop and use_yolo:
@@ -178,16 +178,21 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
-        # model must be loaded with DetectMultiBackend class.
-        # please replace model.model with model, otherwise.
-        model = QuantizedYoloBackbone(model.model)
-        head = QuantizedYoloHead(model_head)
-        del(model_head)
+        if isinstance(model, DetectMultiBackend):
+            model = QuantizedYoloBackbone(model.model)  # nn.Sequential
+            head = QuantizedYoloHead(model_head.model)  # nn.Sequential
+
+        elif isinstance(model, torch.nn.Module):
+            model = QuantizedYoloBackbone(model)  # nn.Sequential
+            head = QuantizedYoloHead(model_head)  # nn.Sequential
+
+        del model_head
 
         model.fuse_model()
-        if "ARM64" in platform.machine():
+        if "ARM64" in platform.machine():  # intel x86-64
             model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
-        elif "aarch64" in platform.machine():
+
+        elif "aarch64" in platform.machine():  # aarch64
             torch.backends.quantized.engine = 'qnnpack'
             model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
 
