@@ -186,6 +186,7 @@ def run(
         if "ARM64" in platform.machine():
             model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
         elif "aarch64" in platform.machine():
+            torch.backends.quantized.engine = 'qnnpack'
             model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
 
         torch.ao.quantization.prepare(model, inplace=True)
