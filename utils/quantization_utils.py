@@ -8,12 +8,9 @@ from torch import nn as nn
 from torch.ao.quantization import fuse_modules
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
-from torch.ao.nn.quantized import Conv2d as qConv2d
-from models.resnet import resnet18 as ResNet18
-from models.resnet import resnet152 as ResNet152
 from models.common import ConvBnReLU, BottleneckReLU, Concat
-from models.yolo import Detect
 from models.common import DetectMultiBackend
+from utils.general import non_max_suppression
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parent.parent  # root directory
@@ -190,18 +187,21 @@ class QuantModel(nn.Module):
 
 
 class QuantizedYoloBackbone(nn.Module):
-    def __init__(self, fname: str = "yolov3-qat.pt"):
+    def __init__(self, model: Union[str, None] = None):
         super().__init__()
-        self.quant = torch.ao.quantization.QuantStub()
+        if isinstance(model, str):
+            if model.endswith(".pt"):
+                self.model = torch.load(
+                    os.path.join(ROOT, model), map_location=torch.device("cpu")
+                )
+            elif model.endswith(".yaml"):
+                self.model = DetectMultiBackend(
+                    os.path.join(ROOT, "models", model), torch.device("cpu"), False
+                )
+        elif isinstance(model, nn.Module):
+            self.model = model
 
-        if fname.endswith(".pt"):
-            self.model = torch.load(
-                os.path.join(ROOT, fname), map_location=torch.device("cpu")
-            )
-        elif fname.endswith(".yaml"):
-            self.model = DetectMultiBackend(
-                os.path.join(ROOT, "models", fname), torch.device("cpu"), False
-            )
+        self.quant = torch.ao.quantization.QuantStub()
         self.model.model[28] = nn.Identity()
         self.dequant = torch.ao.quantization.DeQuantStub()
         self.model = self.model.eval()
@@ -271,18 +271,21 @@ class QuantizedYoloBackbone(nn.Module):
 
 
 class QuantizedYoloHead(nn.Module):
-    def __init__(self, fname: str = "yolov3-qat.pt"):
+    def __init__(self, model: Union[str, None] = None):
         super().__init__()
+        if isinstance(model, str):
+            if model.endswith(".pt"):
+                yolo_model = torch.load(
+                    os.path.join(ROOT, model), map_location=torch.device("cpu")
+                )
+            elif model.endswith(".yaml"):
+                yolo_model = DetectMultiBackend(
+                    os.path.join(ROOT, "models", model), torch.device("cpu"), False
+                )
+        elif isinstance(model, nn.Module):
+            yolo_model = model
 
-        if fname.endswith(".pt"):
-            model = torch.load(
-                os.path.join(ROOT, fname), map_location=torch.device("cpu")
-            )
-        elif fname.endswith(".yaml"):
-            model = DetectMultiBackend(
-                os.path.join(ROOT, "models", fname), torch.device("cpu"), False
-            )
-        self.model = model.model[28]
+        self.model = yolo_model.model[28]
         self.model = self.model.eval()
 
     def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
@@ -292,61 +295,44 @@ class QuantizedYoloHead(nn.Module):
 if __name__ == "__main__":
     # create a model instance
     architecture = platform.uname().machine
-    # fname: str = "yolov3-qat.pt"
-    # model = torch.load(os.path.join(ROOT, fname), map_location=torch.device("cpu")).eval()
-    # model(torch.randn(1, 3, 320, 320))
-    yolo_qint8 = QuantizedYoloBackbone()
+    input = torch.randn(1, 3, 320, 320)
+    fname: str = "yolov3-qat.pt"
+    model = torch.load(
+        os.path.join(ROOT, fname), map_location=torch.device("cpu")
+    ).eval()
+    model_head = torch.load(
+        os.path.join(ROOT, fname), map_location=torch.device("cpu")
+    ).eval()
+    fp_output = model(input)[0]
+    yolo_qint8 = QuantizedYoloBackbone(model)
     yolo_qint8.fuse_model()
     yolo_qint8.check_fused_layers()
     yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
     torch.ao.quantization.prepare(yolo_qint8, inplace=True)
-    yolo_qint8(torch.randn(1, 3, 320, 320))
+    yolo_qint8(input)
     torch.ao.quantization.convert(yolo_qint8, inplace=True)
-    dummy_output = yolo_qint8(torch.randn(1, 3, 320, 320))
-    yolo_detector = QuantizedYoloHead()
+    dummy_output = yolo_qint8(input)
+    yolo_detector = QuantizedYoloHead(model_head)
     pred = yolo_detector(dummy_output)[0]
 
-    # model_fp32 = ResNet18().eval()
-    model_fp32 = M().eval()
-    model_ori = copy.deepcopy(model_fp32)
-
-    # fuse BasicBlock for ResNet18 ONLY
-    if "ResNet" in model_fp32.__class__.__name__:
-        fuse_resnet(model_fp32)
-
-    else:
-        torch.quantization.fuse_modules(
-            model_fp32, [["conv", "bn", "relu"]], inplace=True
-        )
-
-    model_qint8 = QuantModel(model=model_fp32)
-    model_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
-
-    # the model that will observe activation tensors during calibration.
-    torch.ao.quantization.prepare(model_qint8, inplace=True)
-    input_fp32 = torch.randn(1, 3, 224, 224)
-
-    # it calibrates model
-    model_qint8(input_fp32)
-
-    # quantize model
-    model_int8 = torch.ao.quantization.convert(model_qint8)
-
-    # run the model, relevant calculations will happen in int8
-    res = model_int8(input_fp32)
-    res_fp = model_ori(input_fp32)
-
-    # onnx export test
-    torch.onnx.export(
-        model_ori,
-        input_fp32,
-        "../model_ori.onnx",
-        opset_version=17,
+    pred_fp = non_max_suppression(
+        fp_output,
+        0.1,
+        0.25,
     )
 
+    pred_qint = non_max_suppression(
+        pred,
+        0.1,
+        0.25,
+    )
+
+    # onnx export test
+    # failed.
+    # torch.onnx.errors.UnsupportedOperatorError: Exporting the operator 'quantized::batch_norm2d' to ONNX opset version 17 is not supported.
     torch.onnx.export(
-        model_int8,
-        input_fp32,
-        "../model_int8.onnx",
-        opset_version=17,  # offset <= 11 occurs error
+        yolo_qint8,
+        input,
+        "../yolov3_backbone_qint8.onnx",
+        opset_version=17,
     )

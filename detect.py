@@ -13,7 +13,9 @@ Usage:
 """
 
 import argparse
+import copy
 import os
+import platform
 import sys
 from pathlib import Path
 
@@ -58,6 +60,7 @@ from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
 from utils.roi_utils import crop_region_of_plates, resize, rescale_roi
 from utils.augmentations import wrap_letterbox
+from utils.quantization_utils import QuantizedYoloBackbone, QuantizedYoloHead
 
 
 @torch.no_grad()
@@ -131,6 +134,8 @@ def run(
         print(f"loading best scored model, {best_epoch}th...")
 
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
+    if quantize_model:
+        model_head = copy.deepcopy(model.model)
 
     # use ROI detection with yolo
     if roi_crop and use_yolo:
@@ -173,7 +178,19 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
-        raise NotImplementedError("Model quantizer for yolo model is not supported yet")
+        model = QuantizedYoloBackbone(model.model)
+        head = QuantizedYoloHead(model_head)
+        del(model_head)
+
+        model.fuse_model()
+        if "ARM64" in platform.machine():
+            model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
+        elif "aarch64" in platform.machine():
+            model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
+
+        torch.ao.quantization.prepare(model, inplace=True)
+        model(torch.randn(1, 3, 320, 320))  # TODO: Implement calibration function
+        torch.ao.quantization.convert(model, inplace=True)
 
     # Dataloader
     if webcam:
@@ -273,7 +290,12 @@ def run(
             if visualize
             else False
         )
-        pred = model(im, augment=augment, visualize=visualize)
+        if quantize_model:
+            pred = model(im)
+            pred = head(pred)[0]
+        else:
+            pred = model(im, augment=augment, visualize=visualize)
+
         t3 = time_sync()
         dt[1] += t3 - t2
 
