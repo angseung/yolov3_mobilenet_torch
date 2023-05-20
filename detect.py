@@ -178,6 +178,8 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
+        # model must be loaded with DetectMultiBackend class.
+        # please replace model.model with model, otherwise.
         model = QuantizedYoloBackbone(model.model)
         head = QuantizedYoloHead(model_head)
         del(model_head)
