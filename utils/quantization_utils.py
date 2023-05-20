@@ -11,7 +11,8 @@ from torch.ao.quantization import quantize_dynamic
 from torch.ao.nn.quantized import Conv2d as qConv2d
 from models.resnet import resnet18 as ResNet18
 from models.resnet import resnet152 as ResNet152
-from models.common import ConvBnReLU, BottleneckReLU
+from models.common import ConvBnReLU, BottleneckReLU, Concat
+from models.yolo import Detect
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parent.parent  # root directory
@@ -194,6 +195,16 @@ class QuantizedYolo(nn.Module):
         self.model = torch.load(os.path.join(ROOT, fname), map_location=torch.device("cpu")).eval()  # nn.Sequential
         self.dequant = torch.ao.quantization.DeQuantStub()
 
+        self.x6 = None
+        self.x8 = None
+        self.x14 = None
+        self.x15 = None
+        self.x17 = None
+        self.x21 = None
+        self.x22 = None
+        self.x24 = None
+        self.x27 = None
+
     def fuse_model(self):
         for i, block in self.model.model.named_children():
             if isinstance(block, ConvBnReLU):
@@ -217,8 +228,44 @@ class QuantizedYolo(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quant(x)
-        x = self.model(x)
-        x = self.dequant(x)
+        for i, block in self.model.model.named_children():
+            if isinstance(block, Detect):
+                self.x15 = self.dequant(self.x15)
+                self.x22 = self.dequant(self.x22)
+                self.x27 = self.dequant(self.x27)
+                x = block([self.x27, self.x22, self.x15])
+            elif isinstance(block, Concat):
+                if i == "18":
+                    x = block([self.x8, self.x17])
+                elif i == "25":
+                    x = block([self.x6, self.x24])
+            else:
+                if i == "16":
+                    x = block(self.x14)
+                elif i == "23":
+                    x = block(self.x21)
+                else:
+                    x = block(x)
+
+                # save feature map for concat/conv layers...
+                if i == "6":
+                    self.x6 = x.clone()
+                elif i == "8":
+                    self.x8 = x.clone()
+                elif i == "14":
+                    self.x14 = x.clone()
+                elif i == "15":
+                    self.x15 = x.clone()
+                elif i == "17":
+                    self.x17 = x.clone()
+                elif i == "21":
+                    self.x21 = x.clone()
+                elif i == "22":
+                    self.x22 = x.clone()
+                elif i == "24":
+                    self.x24 = x.clone()
+                elif i == "27":
+                    self.x27 = x.clone()
 
         return x
 
@@ -226,13 +273,17 @@ class QuantizedYolo(nn.Module):
 if __name__ == "__main__":
     # create a model instance
     architecture = platform.uname().machine
-
+    # fname: str = "yolov3-qat.pt"
+    # model = torch.load(os.path.join(ROOT, fname), map_location=torch.device("cpu")).eval()
+    # model(torch.randn(1, 3, 320, 320))
     yolo_qint8 = QuantizedYolo()
     yolo_qint8.fuse_model()
     yolo_qint8.check_fused_layers()
+    yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
     torch.ao.quantization.prepare(yolo_qint8, inplace=True)
     yolo_qint8(torch.randn(1, 3, 320, 320))
     torch.ao.quantization.convert(yolo_qint8, inplace=True)
+    dummy_output = yolo_qint8(torch.randn(1, 3, 320, 320))
 
     # model_fp32 = ResNet18().eval()
     model_fp32 = M().eval()
