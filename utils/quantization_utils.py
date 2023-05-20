@@ -285,7 +285,7 @@ class QuantizedYoloHead(nn.Module):
         elif isinstance(model, nn.Module):
             yolo_model = model
 
-        self.model = yolo_model.model[28]
+        self.model = copy.deepcopy(yolo_model.model[28])
         self.model = self.model.eval()
 
     def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
