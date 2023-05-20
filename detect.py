@@ -185,11 +185,12 @@ def run(
             model = QuantizedYoloBackbone(model)  # nn.Sequential
 
         model.fuse_model()
+
         if "ARM64" in platform.machine():  # intel x86-64
             model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
 
         elif "aarch64" in platform.machine():  # aarch64
-            torch.backends.quantized.engine = 'qnnpack'
+            torch.backends.quantized.engine = "qnnpack"
             model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
 
         torch.ao.quantization.prepare(model, inplace=True)
