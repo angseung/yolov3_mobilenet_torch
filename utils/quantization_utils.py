@@ -188,12 +188,17 @@ class QuantModel(nn.Module):
         return x
 
 
-class QuantizedYolo(nn.Module):
+class QuantizedYoloBackbone(nn.Module):
     def __init__(self, fname: str = "yolov3-qat.pt"):
         super().__init__()
         self.quant = torch.ao.quantization.QuantStub()
-        self.model = torch.load(os.path.join(ROOT, fname), map_location=torch.device("cpu")).eval()  # nn.Sequential
+        self.model = torch.load(
+            os.path.join(ROOT, fname), map_location=torch.device("cpu")
+        )
+        self.model.model[28] = nn.Identity()
         self.dequant = torch.ao.quantization.DeQuantStub()
+        # self.detector = copy.deepcopy(self.model.model[28])
+        self.model = self.model.eval()
 
         self.x6 = None
         self.x8 = None
@@ -208,12 +213,12 @@ class QuantizedYolo(nn.Module):
     def fuse_model(self):
         for i, block in self.model.model.named_children():
             if isinstance(block, ConvBnReLU):
-                fuse_modules(block, [['conv', 'bn', 'act']], inplace=True)
+                fuse_modules(block, [["conv", "bn", "act"]], inplace=True)
 
             elif isinstance(block, BottleneckReLU):
                 for j, sub_block in block.named_children():
                     if isinstance(sub_block, ConvBnReLU):
-                        fuse_modules(sub_block, [['conv', 'bn', 'act']], inplace=True)
+                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
             # TODO: Implement fusing codes for other blocks here...
 
     def check_fused_layers(self):
@@ -226,20 +231,15 @@ class QuantizedYolo(nn.Module):
                     if isinstance(sub_block, ConvBnReLU):
                         print(sub_block)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
         for i, block in self.model.model.named_children():
-            if isinstance(block, Detect):
-                self.x15 = self.dequant(self.x15)
-                self.x22 = self.dequant(self.x22)
-                self.x27 = self.dequant(self.x27)
-                x = block([self.x27, self.x22, self.x15])
-            elif isinstance(block, Concat):
+            if isinstance(block, Concat):
                 if i == "18":
                     x = block([self.x8, self.x17])
                 elif i == "25":
                     x = block([self.x6, self.x24])
-            else:
+            else:  # ConvBnReLU, BottleneckReLU
                 if i == "16":
                     x = block(self.x14)
                 elif i == "23":
@@ -267,7 +267,24 @@ class QuantizedYolo(nn.Module):
                 elif i == "27":
                     self.x27 = x.clone()
 
-        return x
+        self.x15 = self.dequant(self.x15)
+        self.x22 = self.dequant(self.x22)
+        self.x27 = self.dequant(self.x27)
+
+        return [self.x27, self.x22, self.x15]
+
+
+class QuantizedYoloHead(nn.Module):
+    def __init__(self, fname: str = "yolov3-qat.pt"):
+        super().__init__()
+        model = torch.load(
+            os.path.join(ROOT, fname), map_location=torch.device("cpu")
+        )
+        self.model = model.model[28]
+        self.model = self.model.eval()
+
+    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
+        return self.model(x)
 
 
 if __name__ == "__main__":
@@ -276,7 +293,7 @@ if __name__ == "__main__":
     # fname: str = "yolov3-qat.pt"
     # model = torch.load(os.path.join(ROOT, fname), map_location=torch.device("cpu")).eval()
     # model(torch.randn(1, 3, 320, 320))
-    yolo_qint8 = QuantizedYolo()
+    yolo_qint8 = QuantizedYoloBackbone()
     yolo_qint8.fuse_model()
     yolo_qint8.check_fused_layers()
     yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
@@ -284,6 +301,8 @@ if __name__ == "__main__":
     yolo_qint8(torch.randn(1, 3, 320, 320))
     torch.ao.quantization.convert(yolo_qint8, inplace=True)
     dummy_output = yolo_qint8(torch.randn(1, 3, 320, 320))
+    yolo_detector = QuantizedYoloHead()
+    pred = yolo_detector(dummy_output)[0]
 
     # model_fp32 = ResNet18().eval()
     model_fp32 = M().eval()
