@@ -184,8 +184,6 @@ def run(
             head = QuantizedYoloHead(model)  # nn.Sequential
             model = QuantizedYoloBackbone(model)  # nn.Sequential
 
-        del model_head
-
         model.fuse_model()
         if "ARM64" in platform.machine():  # intel x86-64
             model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
