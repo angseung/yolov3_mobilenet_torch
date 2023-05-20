@@ -186,7 +186,7 @@ def run(
 
         model.fuse_model()
 
-        if "ARM64" in platform.machine():  # intel x86-64
+        if "AMD64" in platform.machine():  # intel x86-64
             model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
 
         elif "aarch64" in platform.machine():  # aarch64
