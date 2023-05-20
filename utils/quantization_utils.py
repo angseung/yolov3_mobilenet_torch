@@ -200,16 +200,6 @@ class QuantizedYoloBackbone(nn.Module):
         # self.detector = copy.deepcopy(self.model.model[28])
         self.model = self.model.eval()
 
-        self.x6 = None
-        self.x8 = None
-        self.x14 = None
-        self.x15 = None
-        self.x17 = None
-        self.x21 = None
-        self.x22 = None
-        self.x24 = None
-        self.x27 = None
-
     def fuse_model(self):
         for i, block in self.model.model.named_children():
             if isinstance(block, ConvBnReLU):
@@ -236,42 +226,42 @@ class QuantizedYoloBackbone(nn.Module):
         for i, block in self.model.model.named_children():
             if isinstance(block, Concat):
                 if i == "18":
-                    x = block([self.x8, self.x17])
+                    x = block([x8, x17])
                 elif i == "25":
-                    x = block([self.x6, self.x24])
+                    x = block([x6, x24])
             else:  # ConvBnReLU, BottleneckReLU
                 if i == "16":
-                    x = block(self.x14)
+                    x = block(x14)
                 elif i == "23":
-                    x = block(self.x21)
+                    x = block(x21)
                 else:
                     x = block(x)
 
                 # save feature map for concat/conv layers...
                 if i == "6":
-                    self.x6 = x.clone()
+                    x6 = x.clone()
                 elif i == "8":
-                    self.x8 = x.clone()
+                    x8 = x.clone()
                 elif i == "14":
-                    self.x14 = x.clone()
+                    x14 = x.clone()
                 elif i == "15":
-                    self.x15 = x.clone()
+                    x15 = x.clone()
                 elif i == "17":
-                    self.x17 = x.clone()
+                    x17 = x.clone()
                 elif i == "21":
-                    self.x21 = x.clone()
+                    x21 = x.clone()
                 elif i == "22":
-                    self.x22 = x.clone()
+                    x22 = x.clone()
                 elif i == "24":
-                    self.x24 = x.clone()
+                    x24 = x.clone()
                 elif i == "27":
-                    self.x27 = x.clone()
+                    x27 = x.clone()
 
-        self.x15 = self.dequant(self.x15)
-        self.x22 = self.dequant(self.x22)
-        self.x27 = self.dequant(self.x27)
+        x15 = self.dequant(x15)
+        x22 = self.dequant(x22)
+        x27 = self.dequant(x27)
 
-        return [self.x27, self.x22, self.x15]
+        return [x27, x22, x15]
 
 
 class QuantizedYoloHead(nn.Module):
