@@ -187,7 +187,7 @@ class QuantModel(nn.Module):
 
 
 class QuantizedYoloBackbone(nn.Module):
-    def __init__(self, model: Union[str, None] = None):
+    def __init__(self, model: Union[str, nn.Module] = None):
         super().__init__()
         if isinstance(model, str):
             if model.endswith(".pt"):
@@ -271,7 +271,7 @@ class QuantizedYoloBackbone(nn.Module):
 
 
 class QuantizedYoloHead(nn.Module):
-    def __init__(self, model: Union[str, None] = None):
+    def __init__(self, model: Union[str, nn.Module] = None):
         super().__init__()
         if isinstance(model, str):
             if model.endswith(".pt"):
