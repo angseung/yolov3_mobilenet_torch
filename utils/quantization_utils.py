@@ -13,6 +13,7 @@ from models.resnet import resnet18 as ResNet18
 from models.resnet import resnet152 as ResNet152
 from models.common import ConvBnReLU, BottleneckReLU, Concat
 from models.yolo import Detect
+from models.common import DetectMultiBackend
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parent.parent  # root directory
@@ -192,12 +193,17 @@ class QuantizedYoloBackbone(nn.Module):
     def __init__(self, fname: str = "yolov3-qat.pt"):
         super().__init__()
         self.quant = torch.ao.quantization.QuantStub()
-        self.model = torch.load(
-            os.path.join(ROOT, fname), map_location=torch.device("cpu")
-        )
+
+        if fname.endswith(".pt"):
+            self.model = torch.load(
+                os.path.join(ROOT, fname), map_location=torch.device("cpu")
+            )
+        elif fname.endswith(".yaml"):
+            self.model = DetectMultiBackend(
+                os.path.join(ROOT, "models", fname), torch.device("cpu"), False
+            )
         self.model.model[28] = nn.Identity()
         self.dequant = torch.ao.quantization.DeQuantStub()
-        # self.detector = copy.deepcopy(self.model.model[28])
         self.model = self.model.eval()
 
     def fuse_model(self):
@@ -267,9 +273,15 @@ class QuantizedYoloBackbone(nn.Module):
 class QuantizedYoloHead(nn.Module):
     def __init__(self, fname: str = "yolov3-qat.pt"):
         super().__init__()
-        model = torch.load(
-            os.path.join(ROOT, fname), map_location=torch.device("cpu")
-        )
+
+        if fname.endswith(".pt"):
+            model = torch.load(
+                os.path.join(ROOT, fname), map_location=torch.device("cpu")
+            )
+        elif fname.endswith(".yaml"):
+            model = DetectMultiBackend(
+                os.path.join(ROOT, "models", fname), torch.device("cpu"), False
+            )
         self.model = model.model[28]
         self.model = self.model.eval()
 
