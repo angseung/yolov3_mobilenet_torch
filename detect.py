@@ -134,8 +134,6 @@ def run(
         print(f"loading best scored model, {best_epoch}th...")
 
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
-    if quantize_model:
-        model_head = copy.deepcopy(model)
 
     # use ROI detection with yolo
     if roi_crop and use_yolo:
@@ -179,12 +177,12 @@ def run(
 
     if quantize_model:
         if isinstance(model, DetectMultiBackend):
-            model = QuantizedYoloBackbone(model.model)  # nn.Sequential
             head = QuantizedYoloHead(model_head.model)  # nn.Sequential
+            model = QuantizedYoloBackbone(model.model)  # nn.Sequential
 
         elif isinstance(model, torch.nn.Module):
-            model = QuantizedYoloBackbone(model)  # nn.Sequential
             head = QuantizedYoloHead(model_head)  # nn.Sequential
+            model = QuantizedYoloBackbone(model)  # nn.Sequential
 
         del model_head
 
