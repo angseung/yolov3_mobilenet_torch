@@ -13,7 +13,6 @@ Usage:
 """
 
 import argparse
-import copy
 import os
 import platform
 import sys
