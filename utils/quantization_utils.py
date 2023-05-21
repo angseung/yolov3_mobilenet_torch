@@ -209,6 +209,12 @@ class QuantizedYoloBackbone(nn.Module):
         elif isinstance(model, nn.Module):
             self.model = model
 
+        elif isinstance(model, DetectMultiBackend):
+            self.model = model.model
+
+        else:
+            raise AttributeError("Unsupported model type")
+
         self.quant = torch.ao.quantization.QuantStub()
         self.model.model[28] = nn.Identity()
         self.dequant = torch.ao.quantization.DeQuantStub()
@@ -237,6 +243,7 @@ class QuantizedYoloBackbone(nn.Module):
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
+
         for i, block in self.model.model.named_children():
             if isinstance(block, Concat):
                 if i == "18":
@@ -295,6 +302,12 @@ class QuantizedYoloHead(nn.Module):
         elif isinstance(model, nn.Module):
             yolo_model = model
 
+        elif isinstance(model, DetectMultiBackend):
+            yolo_model = model.model
+
+        else:
+            raise AttributeError("Unsupported model type")
+
         self.model = copy.deepcopy(yolo_model.model[28])
         self.model = self.model.eval()
 
@@ -305,19 +318,16 @@ class QuantizedYoloHead(nn.Module):
 class CalibrationDataLoader(Dataset):
     def __init__(self, img_dir: str, target_size: int = 320):
         super().__init__()
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),
-            normalizer()
-        ])
+        self.transform = transforms.Compose([transforms.ToTensor(), normalizer()])
         self.target_size = target_size
         self.img_dir = img_dir
         self.img_list = os.listdir(img_dir)
 
     def __getitem__(self, item):
-        img = cv2.imread(f"{self.img_dir}/{self.img_list[item]}")
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.imread(f"{self.img_dir}/{self.img_list[item]}")  # BGR
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # RGB
         img = resize(img, self.target_size)
-        img = wrap_letterbox(img, self.target_size)[0]
+        img = wrap_letterbox(img, self.target_size)[0]  # padded as square shape
 
         return self.transform(img)
 
@@ -364,5 +374,5 @@ if __name__ == "__main__":
         yolo_qint8,
         input,
         "../yolov3_backbone_qint8.onnx",
-        opset_version=17,
+        opset_version=11,
     )

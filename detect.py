@@ -60,7 +60,11 @@ from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
 from utils.roi_utils import crop_region_of_plates, resize, rescale_roi
 from utils.augmentations import wrap_letterbox
-from utils.quantization_utils import QuantizedYoloBackbone, QuantizedYoloHead, CalibrationDataLoader
+from utils.quantization_utils import (
+    QuantizedYoloBackbone,
+    QuantizedYoloHead,
+    CalibrationDataLoader,
+)
 
 
 @torch.no_grad()
