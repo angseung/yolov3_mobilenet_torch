@@ -23,6 +23,7 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 from torchvision.ops import nms
+from torch.utils.data import Dataset, DataLoader
 import yaml
 from PIL import ImageFont, ImageDraw, Image
 
@@ -59,7 +60,7 @@ from utils.augment_utils import auto_canny, label_yolo2voc, label_voc2yolo
 from utils.detect_utils import read_bboxes, correction_plate
 from utils.roi_utils import crop_region_of_plates, resize, rescale_roi
 from utils.augmentations import wrap_letterbox
-from utils.quantization_utils import QuantizedYoloBackbone, QuantizedYoloHead
+from utils.quantization_utils import QuantizedYoloBackbone, QuantizedYoloHead, CalibrationDataLoader
 
 
 @torch.no_grad()
@@ -98,6 +99,7 @@ def run(
     print_string=False,
     compile_model=False,
     quantize_model=False,
+    nocal=False,
     roi_crop=False,
     use_yolo=False,
     show_best_epoch=False,
@@ -194,7 +196,16 @@ def run(
             model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
 
         torch.ao.quantization.prepare(model, inplace=True)
-        model(torch.randn(1, 3, 320, 320))  # TODO: Implement calibration function
+
+        if not nocal:
+            # dataloader for calibration
+            dataset = CalibrationDataLoader(os.path.join(ROOT, "data", "cropped"))
+            calibration_dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
+
+            for i, img in enumerate(calibration_dataloader):
+                print(f"\rcalibrating... {i + 1} / {dataset.__len__()}", end="")
+                model(img)
+
         torch.ao.quantization.convert(model, inplace=True)
 
     # Dataloader
@@ -551,6 +562,9 @@ def parse_opt():
     )
     parser.add_argument(
         "--quantize-model", action="store_true", help="quantize model (CPU ONLY)"
+    )
+    parser.add_argument(
+        "--nocal", action="store_true", help="skip calibration for quantization process"
     )
     parser.add_argument(
         "--normalize", action="store_true", help="apply normalizer or not"

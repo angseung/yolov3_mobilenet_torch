@@ -3,14 +3,20 @@ import platform
 import copy
 from typing import *
 from pathlib import Path
+import cv2
 import torch
 from torch import nn as nn
 from torch.ao.quantization import fuse_modules
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
 from models.common import ConvBnReLU, BottleneckReLU, Concat
 from models.common import DetectMultiBackend
 from utils.general import non_max_suppression
+from utils.torch_utils import normalizer
+from utils.roi_utils import resize
+from utils.augmentations import wrap_letterbox
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parent.parent  # root directory
@@ -194,9 +200,11 @@ class QuantizedYoloBackbone(nn.Module):
                 self.model = torch.load(
                     os.path.join(ROOT, model), map_location=torch.device("cpu")
                 )
+                if isinstance(self.model, dict):
+                    self.model = self.model["model"].float()
             elif model.endswith(".yaml"):
                 self.model = DetectMultiBackend(
-                    os.path.join(ROOT, "models", model), torch.device("cpu"), False
+                    os.path.join(ROOT, model), torch.device("cpu"), False
                 )
         elif isinstance(model, nn.Module):
             self.model = model
@@ -278,9 +286,11 @@ class QuantizedYoloHead(nn.Module):
                 yolo_model = torch.load(
                     os.path.join(ROOT, model), map_location=torch.device("cpu")
                 )
+                if isinstance(yolo_model, dict):
+                    yolo_model = yolo_model["model"].float()
             elif model.endswith(".yaml"):
                 yolo_model = DetectMultiBackend(
-                    os.path.join(ROOT, "models", model), torch.device("cpu"), False
+                    os.path.join(ROOT, model), torch.device("cpu"), False
                 )
         elif isinstance(model, nn.Module):
             yolo_model = model
@@ -292,34 +302,54 @@ class QuantizedYoloHead(nn.Module):
         return self.model(x)
 
 
+class CalibrationDataLoader(Dataset):
+    def __init__(self, img_dir: str, target_size: int = 320):
+        super().__init__()
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            normalizer()
+        ])
+        self.target_size = target_size
+        self.img_dir = img_dir
+        self.img_list = os.listdir(img_dir)
+
+    def __getitem__(self, item):
+        img = cv2.imread(f"{self.img_dir}/{self.img_list[item]}")
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = resize(img, self.target_size)
+        img = wrap_letterbox(img, self.target_size)[0]
+
+        return self.transform(img)
+
+    def __len__(self):
+        return len(self.img_list)
+
+
 if __name__ == "__main__":
     # create a model instance
     architecture = platform.uname().machine
+    dataset = CalibrationDataLoader(os.path.join(ROOT, "data", "cropped"))
+    calibration_dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
+
     input = torch.randn(1, 3, 320, 320)
-    fname: str = "yolov3-qat.pt"
-    model = torch.load(
-        os.path.join(ROOT, fname), map_location=torch.device("cpu")
-    ).eval()
-    model_head = torch.load(
-        os.path.join(ROOT, fname), map_location=torch.device("cpu")
-    ).eval()
-    fp_output = model(input)[0]
-    yolo_qint8 = QuantizedYoloBackbone(model)
+    fname: str = "best.pt"
+    yolo_detector = QuantizedYoloHead(fname)
+    yolo_fp32 = QuantizedYoloBackbone(fname)
+    yolo_qint8 = QuantizedYoloBackbone(fname)
     yolo_qint8.fuse_model()
     yolo_qint8.check_fused_layers()
     yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
     torch.ao.quantization.prepare(yolo_qint8, inplace=True)
-    yolo_qint8(input)
+
+    for i, img in enumerate(calibration_dataloader):
+        print(f"\rcalibrating... {i + 1} / {dataset.__len__()}", end="")
+        yolo_qint8(img)
+
     torch.ao.quantization.convert(yolo_qint8, inplace=True)
     dummy_output = yolo_qint8(input)
-    yolo_detector = QuantizedYoloHead(model_head)
     pred = yolo_detector(dummy_output)[0]
 
-    pred_fp = non_max_suppression(
-        fp_output,
-        0.1,
-        0.25,
-    )
+    pred_fp32 = yolo_detector(yolo_fp32(input))[0]
 
     pred_qint = non_max_suppression(
         pred,
