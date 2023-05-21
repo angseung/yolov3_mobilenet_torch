@@ -11,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
-from models.common import ConvBnReLU, BottleneckReLU, Concat
+from models.common import ConvBnReLU, BottleneckReLU, Concat, C3ReLU, SPPFReLU
 from models.common import DetectMultiBackend
 from utils.general import non_max_suppression
 from utils.torch_utils import normalizer
@@ -193,8 +193,10 @@ class QuantModel(nn.Module):
 
 
 class QuantizedYoloBackbone(nn.Module):
-    def __init__(self, model: Union[str, nn.Module] = None):
+    def __init__(self, model: Union[str, nn.Module] = None, yolo_version: int = 3):
         super().__init__()
+        self.yolo_version = yolo_version
+
         if isinstance(model, str):
             if model.endswith(".pt"):
                 self.model = torch.load(
@@ -229,6 +231,13 @@ class QuantizedYoloBackbone(nn.Module):
                 for j, sub_block in block.named_children():
                     if isinstance(sub_block, ConvBnReLU):
                         fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
+
+            elif isinstance(block, C3ReLU):
+                raise NotImplementedError
+
+            elif isinstance(block, SPPFReLU):
+                raise NotImplementedError
+
             # TODO: Implement fusing codes for other blocks here...
 
     def check_fused_layers(self):
@@ -241,7 +250,7 @@ class QuantizedYoloBackbone(nn.Module):
                     if isinstance(sub_block, ConvBnReLU):
                         print(sub_block)
 
-    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+    def _forward_v3(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
 
         for i, block in self.model.model.named_children():
@@ -284,6 +293,16 @@ class QuantizedYoloBackbone(nn.Module):
 
         return [x27, x22, x15]
 
+    def _forward_v5(self, x: torch.Tensor) -> List[torch.Tensor]:
+        raise NotImplementedError
+
+    def forward(self, x: Union[torch.Tensor, List[torch.Tensor]]) -> Union[torch.Tensor, List[torch.Tensor]]:
+        if self.yolo_version == 3:
+            return self._forward_v3(x)
+
+        elif self.yolo_version == 5:
+            return self._forward_v5(x)
+
 
 class QuantizedYoloHead(nn.Module):
     def __init__(self, model: Union[str, nn.Module] = None):
@@ -308,7 +327,7 @@ class QuantizedYoloHead(nn.Module):
         else:
             raise AttributeError("Unsupported model type")
 
-        self.model = copy.deepcopy(yolo_model.model[28])
+        self.model = copy.deepcopy(yolo_model.model[-1])
         self.model = self.model.eval()
 
     def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
