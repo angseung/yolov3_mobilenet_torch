@@ -26,14 +26,14 @@ from torchvision.ops import nms
 import yaml
 from PIL import ImageFont, ImageDraw, Image
 
-cropped_imgsz = 256
+
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 fontpath = "fonts/NanumBarunGothic.ttf"
-font = ImageFont.truetype(fontpath, 48)
+font = ImageFont.truetype(fontpath, 36)
 
 from models.common import DetectMultiBackend
 from utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
@@ -67,6 +67,7 @@ def run(
     weights=ROOT / "yolov3.pt",  # model.pt path(s)
     source=ROOT / "data/images",  # file/dir/URL/glob, 0 for webcam
     imgsz=320,  # inference size (pixels)
+    cropped_imgsz=256,
     conf_thres=0.25,  # confidence threshold
     iou_thres=0.45,  # NMS IOU threshold
     max_det=1000,  # maximum detections per image
@@ -456,7 +457,16 @@ def run(
             im0 = annotator.result()
             img_pillow = Image.fromarray(im0)
             draw = ImageDraw.Draw(img_pillow)
-            draw.text((60, 70), plate_string, font=font, fill=(255, 255, 255, 0))
+
+            if len(det.size()):
+                draw.text(
+                    (10, 10),
+                    plate_string,
+                    font=font,
+                    fill=(0, 0, 0),
+                    stroke_width=2,
+                    stroke_fill=(255, 255, 255),
+                )
             im0 = np.array(img_pillow)
 
             if roi_crop:
@@ -532,6 +542,9 @@ def parse_opt():
         type=int,
         default=[320],
         help="inference size h,w",
+    )
+    parser.add_argument(
+        "--cropped-imgsz", type=int, default=256, help="crop size for roi detection"
     )
     parser.add_argument(
         "--compile-model", action="store_true", help="compile model (GPU ONLY)"
