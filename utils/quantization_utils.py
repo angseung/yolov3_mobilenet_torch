@@ -233,10 +233,17 @@ class QuantizedYoloBackbone(nn.Module):
                         fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
 
             elif isinstance(block, C3ReLU):
-                raise NotImplementedError
+                for j, sub_block in block.named_children():
+                    if isinstance(sub_block, ConvBnReLU):
+                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
+                    elif isinstance(sub_block, BottleneckReLU):
+                        for k, sub_sub_block in sub_block:
+                            fuse_modules(sub_sub_block, [["conv", "bn", "act"]], inplace=True)
 
             elif isinstance(block, SPPFReLU):
-                raise NotImplementedError
+                for j, sub_block in block.named_children():
+                    if isinstance(sub_block, ConvBnReLU):
+                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
 
             # TODO: Implement fusing codes for other blocks here...
 
@@ -294,7 +301,50 @@ class QuantizedYoloBackbone(nn.Module):
         return [x27, x22, x15]
 
     def _forward_v5(self, x: torch.Tensor) -> List[torch.Tensor]:
-        raise NotImplementedError
+        x = self.quant(x)
+
+        for i, block in self.model.model.named_children():
+            if isinstance(block, Concat):
+                if i == "12":
+                    x = block([x6, x11])
+                elif i == "16":
+                    x = block([x4, x15])
+                elif i == "19":
+                    x = block([x14, x18])
+                elif i == "22":
+                    x = block([x10, x21])
+            else:  # ConvBnReLU, BottleneckReLU, C3ReLU, SPPFReLU
+                x = block(x)
+
+                # save feature map for concat/conv layers...
+                if i == "4":
+                    x4 = x.clone()
+                elif i == "6":
+                    x6 = x.clone()
+                elif i == "10":
+                    x10 = x.clone()
+                elif i == "11":
+                    x11 = x.clone()
+                elif i == "14":
+                    x14 = x.clone()
+                elif i == "15":
+                    x15 = x.clone()
+                elif i == "17":
+                    x17 = x.clone()
+                elif i == "18":
+                    x18 = x.clone()
+                elif i == "20":
+                    x20 = x.clone()
+                elif i == "21":
+                    x21 = x.clone()
+                elif i == "23":
+                    x23 = x.clone()
+
+        x17 = self.dequant(x17)
+        x20 = self.dequant(x20)
+        x23 = self.dequant(x23)
+
+        return [x23, x20, x17]
 
     def forward(self, x: Union[torch.Tensor, List[torch.Tensor]]) -> Union[torch.Tensor, List[torch.Tensor]]:
         if self.yolo_version == 3:
