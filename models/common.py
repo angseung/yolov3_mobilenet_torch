@@ -47,6 +47,9 @@ LOCAL_RANK = int(
 RANK = int(os.getenv("RANK", -1))
 WORLD_SIZE = int(os.getenv("WORLD_SIZE", 1))
 
+FILE = Path(__file__).resolve()
+ROOT = FILE.parent.parent  # root directory
+
 
 def autopad(k, p=None):  # kernel, padding
     # Pad to 'same'
@@ -526,13 +529,13 @@ class DetectMultiBackend(nn.Module):
         if yaml_file:  # build model from yaml
             # load data.yaml
             with torch_distributed_zero_first(LOCAL_RANK):
-                data_dict = check_dataset("data/coco128.yaml")  # check if None
+                data_dict = check_dataset(os.path.join(ROOT, "data", "coco128.yaml"))  # check if None
             train_path, val_path = data_dict["train"], data_dict["val"]
             nc = int(data_dict["nc"])  # number of classes
             names = data_dict["names"]  # class names
 
             # load hyp.yaml
-            hyp = "data/hyps/hyp.scratch.yaml"
+            hyp = os.path.join(ROOT, "data/hyps/hyp.scratch.yaml")
             if isinstance(hyp, str):
                 with open(hyp, errors="ignore") as f:
                     hyp = yaml.safe_load(f)  # load hyps dict

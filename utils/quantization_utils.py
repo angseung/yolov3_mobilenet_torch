@@ -218,7 +218,7 @@ class QuantizedYoloBackbone(nn.Module):
             raise AttributeError("Unsupported model type")
 
         self.quant = torch.ao.quantization.QuantStub()
-        self.model.model[28] = nn.Identity()
+        self.model.model[-1] = nn.Identity()
         self.dequant = torch.ao.quantization.DeQuantStub()
         self.model = self.model.eval()
 
@@ -344,7 +344,7 @@ class QuantizedYoloBackbone(nn.Module):
         x20 = self.dequant(x20)
         x23 = self.dequant(x23)
 
-        return [x23, x20, x17]
+        return [x17, x20, x23]
 
     def forward(self, x: Union[torch.Tensor, List[torch.Tensor]]) -> Union[torch.Tensor, List[torch.Tensor]]:
         if self.yolo_version == 3:
@@ -366,7 +366,7 @@ class QuantizedYoloHead(nn.Module):
                     yolo_model = yolo_model["model"].float()
             elif model.endswith(".yaml"):
                 yolo_model = DetectMultiBackend(
-                    os.path.join(ROOT, model), torch.device("cpu"), False
+                    os.path.join(model), torch.device("cpu"), False
                 )
         elif isinstance(model, nn.Module):
             yolo_model = model
@@ -411,10 +411,10 @@ if __name__ == "__main__":
     calibration_dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     input = torch.randn(1, 3, 320, 320)
-    fname: str = "best.pt"
+    fname: str = os.path.join("weights", "yolov5m-qat.pt")
     yolo_detector = QuantizedYoloHead(fname)
-    yolo_fp32 = QuantizedYoloBackbone(fname)
-    yolo_qint8 = QuantizedYoloBackbone(fname)
+    yolo_fp32 = QuantizedYoloBackbone(fname, yolo_version=5)
+    yolo_qint8 = QuantizedYoloBackbone(fname, yolo_version=5)
     yolo_qint8.fuse_model()
     yolo_qint8.check_fused_layers()
     yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")

@@ -184,11 +184,11 @@ def run(
     if quantize_model:
         if isinstance(model, DetectMultiBackend):
             head = QuantizedYoloHead(model.model)  # nn.Sequential
-            model = QuantizedYoloBackbone(model.model)  # nn.Sequential
+            model = QuantizedYoloBackbone(model.model, yolo_version=5)  # nn.Sequential
 
         elif isinstance(model, torch.nn.Module):
             head = QuantizedYoloHead(model)  # nn.Sequential
-            model = QuantizedYoloBackbone(model)  # nn.Sequential
+            model = QuantizedYoloBackbone(model, yolo_version=5)  # nn.Sequential
 
         model.fuse_model()
 
