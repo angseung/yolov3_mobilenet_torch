@@ -277,9 +277,9 @@ class QuantizedYoloBackbone(nn.Module):
         for i, block in self.model.model.named_children():
             if isinstance(block, Concat):
                 if i == "18":
-                    x = block([x8, x17])
+                    x = block([x17, x8])
                 elif i == "25":
-                    x = block([x6, x24])
+                    x = block([x24, x6])
             else:  # ConvBnReLU, BottleneckReLU
                 if i == "16":
                     x = block(x14)
@@ -320,13 +320,13 @@ class QuantizedYoloBackbone(nn.Module):
         for i, block in self.model.model.named_children():
             if isinstance(block, Concat):
                 if i == "12":
-                    x = block([x6, x11])
+                    x = block([x11, x6])
                 elif i == "16":
-                    x = block([x4, x15])
+                    x = block([x15, x4])
                 elif i == "19":
-                    x = block([x14, x18])
+                    x = block([x18, x14])
                 elif i == "22":
-                    x = block([x10, x21])
+                    x = block([x21, x10])
             else:  # ConvBnReLU, BottleneckReLU, C3ReLU, SPPFReLU
                 x = block(x)
 

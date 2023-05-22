@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import copy
 import os
 import platform
 import sys
@@ -182,6 +183,7 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
+        model_fp = copy.deepcopy(model)
         if isinstance(model, DetectMultiBackend):
             head = QuantizedYoloHead(model.model)  # nn.Sequential
             model = QuantizedYoloBackbone(model.model, yolo_version=5)  # nn.Sequential
@@ -313,6 +315,7 @@ def run(
         if quantize_model:
             pred = model(im)
             pred = head(pred)[0]
+            pred_fp = model_fp(im)
         else:
             pred = model(im, augment=augment, visualize=visualize)
 
