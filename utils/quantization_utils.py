@@ -223,22 +223,25 @@ class QuantizedYoloBackbone(nn.Module):
         self.model = self.model.eval()
 
     def fuse_model(self):
-        for i, block in self.model.model.named_children():
+        for _, block in self.model.model.named_children():
             if isinstance(block, ConvBnReLU):
                 fuse_modules(block, [["conv", "bn", "act"]], inplace=True)
 
             elif isinstance(block, BottleneckReLU):
-                for j, sub_block in block.named_children():
+                for _, sub_block in block.named_children():
                     if isinstance(sub_block, ConvBnReLU):
                         fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
 
             elif isinstance(block, C3ReLU):
-                for j, sub_block in block.named_children():
+                for _, sub_block in block.named_children():
                     if isinstance(sub_block, ConvBnReLU):
                         fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
-                    elif isinstance(sub_block, BottleneckReLU):
-                        for k, sub_sub_block in sub_block:
-                            fuse_modules(sub_sub_block, [["conv", "bn", "act"]], inplace=True)
+                    elif isinstance(sub_block, nn.Sequential):
+                        for _, sub_sub_block in sub_block.named_children():
+                            if isinstance(sub_sub_block, BottleneckReLU):
+                                for _, sub_sub_sub_block in sub_sub_block.named_children():
+                                    if isinstance(sub_sub_sub_block, ConvBnReLU):
+                                        fuse_modules(sub_sub_sub_block, [["conv", "bn", "act"]], inplace=True)
 
             elif isinstance(block, SPPFReLU):
                 for j, sub_block in block.named_children():
@@ -248,14 +251,25 @@ class QuantizedYoloBackbone(nn.Module):
             # TODO: Implement fusing codes for other blocks here...
 
     def check_fused_layers(self):
-        for i, block in self.model.model.named_children():
+        for _, block in self.model.model.named_children():
             if isinstance(block, ConvBnReLU):
                 print(block)
 
             elif isinstance(block, BottleneckReLU):
-                for j, sub_block in block.named_children():
+                for _, sub_block in block.named_children():
                     if isinstance(sub_block, ConvBnReLU):
                         print(sub_block)
+
+            elif isinstance(block, C3ReLU):
+                for _, sub_block in block.named_children():
+                    if isinstance(sub_block, ConvBnReLU):
+                        print(sub_block)
+                    elif isinstance(sub_block, nn.Sequential):
+                        for _, sub_sub_block in sub_block.named_children():
+                            if isinstance(sub_sub_block, BottleneckReLU):
+                                for _, sub_sub_sub_block in sub_sub_block.named_children():
+                                    if isinstance(sub_sub_sub_block, ConvBnReLU):
+                                        print(sub_sub_sub_block)
 
     def _forward_v3(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
