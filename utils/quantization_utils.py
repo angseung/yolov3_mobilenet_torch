@@ -271,7 +271,7 @@ class QuantizedYoloBackbone(nn.Module):
                                     if isinstance(sub_sub_sub_block, ConvBnReLU):
                                         print(sub_sub_sub_block)
 
-    def _forward_v3(self, x: torch.Tensor) -> List[torch.Tensor]:
+    def _forward_impl_v3(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
 
         for i, block in self.model.model.named_children():
@@ -314,7 +314,7 @@ class QuantizedYoloBackbone(nn.Module):
 
         return [x27, x22, x15]
 
-    def _forward_v5(self, x: torch.Tensor) -> List[torch.Tensor]:
+    def _forward_impl_v5(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
 
         for i, block in self.model.model.named_children():
@@ -362,10 +362,10 @@ class QuantizedYoloBackbone(nn.Module):
 
     def forward(self, x: Union[torch.Tensor, List[torch.Tensor]]) -> Union[torch.Tensor, List[torch.Tensor]]:
         if self.yolo_version == 3:
-            return self._forward_v3(x)
+            return self._forward_impl_v3(x)
 
         elif self.yolo_version == 5:
-            return self._forward_v5(x)
+            return self._forward_impl_v5(x)
 
 
 class QuantizedYoloHead(nn.Module):
