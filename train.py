@@ -218,12 +218,13 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     # Quantization Aware Training
     if qat:
         # fuse layers
-        # QuantizedYoloBackbone.fuse_layers(model.eval())
+        QuantizedYoloBackbone.fuse_layers(model.eval())
 
         # prepare for qat
         if "AMD64" in platform.machine():
             model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
             model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
+
         elif "aarch64" in platform.machine():
             torch.backends.quantized.engine = "qnnpack"
             model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
@@ -561,7 +562,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
                 scaler.step(optimizer)  # optimizer.step
                 scaler.update()
                 optimizer.zero_grad()
-                if ema:
+                if ema and not qat:
                     ema.update(model)
                 last_opt_step = ni
 
