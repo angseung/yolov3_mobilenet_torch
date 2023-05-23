@@ -11,8 +11,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
-from models.common import ConvBnReLU, BottleneckReLU, Concat, C3ReLU, SPPFReLU
-from models.common import DetectMultiBackend
+from models.common import ConvBnReLU, BottleneckReLU, Concat, C3ReLU, SPPFReLU, DetectMultiBackend
+from models.yolo import Detect
 from utils.general import non_max_suppression
 from utils.torch_utils import normalizer
 from utils.roi_utils import resize
@@ -244,9 +244,47 @@ class QuantizedYoloBackbone(nn.Module):
                                         fuse_modules(sub_sub_sub_block, [["conv", "bn", "act"]], inplace=True)
 
             elif isinstance(block, SPPFReLU):
+                for _, sub_block in block.named_children():
+                    if isinstance(sub_block, ConvBnReLU):
+                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
+
+            elif isinstance(block, nn.Sequential):
+                for _, sub_block in block.named_children():
+                    if isinstance(sub_block, ConvBnReLU):
+                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
+
+    @staticmethod
+    def fuse_layers(model):
+        for _, block in model.model.named_children():
+            if isinstance(block, ConvBnReLU):
+                fuse_modules(block, [["conv", "bn", "act"]], inplace=True)
+
+            elif isinstance(block, BottleneckReLU):
+                for _, sub_block in block.named_children():
+                    if isinstance(sub_block, ConvBnReLU):
+                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
+
+            elif isinstance(block, C3ReLU):
+                for _, sub_block in block.named_children():
+                    if isinstance(sub_block, ConvBnReLU):
+                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
+                    elif isinstance(sub_block, nn.Sequential):
+                        for _, sub_sub_block in sub_block.named_children():
+                            if isinstance(sub_sub_block, BottleneckReLU):
+                                for _, sub_sub_sub_block in sub_sub_block.named_children():
+                                    if isinstance(sub_sub_sub_block, ConvBnReLU):
+                                        fuse_modules(sub_sub_sub_block, [["conv", "bn", "act"]], inplace=True)
+
+            elif isinstance(block, SPPFReLU):
                 for j, sub_block in block.named_children():
                     if isinstance(sub_block, ConvBnReLU):
                         fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
+
+            elif isinstance(block, Detect):
+                for _, sub_block in block.named_children():
+                    for _, sub_sub_block in sub_block.named_children():
+                        if isinstance(sub_block, ConvBnReLU):
+                            fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
 
             # TODO: Implement fusing codes for other blocks here...
 

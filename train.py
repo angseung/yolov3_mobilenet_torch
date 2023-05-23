@@ -78,6 +78,7 @@ from utils.torch_utils import (
     normalizer,
     to_grayscale,
 )
+from utils.quantization_utils import QuantizedYoloBackbone
 
 
 LOCAL_RANK = int(
@@ -216,12 +217,19 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
 
     # Quantization Aware Training
     if qat:
+        # fuse layers
+        QuantizedYoloBackbone.fuse_layers(model.eval())
+
+        # prepare for qat
         if "AMD64" in platform.machine():
+            model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
             model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
         elif "aarch64" in platform.machine():
             torch.backends.quantized.engine = "qnnpack"
+            model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
             model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
 
+        model.train()
         torch.ao.quantization.prepare_qat(model.model, inplace=True)
 
     # Freeze
@@ -880,7 +888,7 @@ def main(opt, callbacks=Callbacks()):
     # Checks
     if RANK in [-1, 0]:
         print_args(FILE.stem, opt)
-        check_git_status()
+        # check_git_status()
         check_requirements(exclude=["thop"])
 
     # Resume
