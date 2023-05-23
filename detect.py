@@ -312,8 +312,7 @@ def run(
             else False
         )
         if quantize_model:
-            pred = model(im)
-            pred = head(pred)[0]
+            pred = head(model(im))
         else:
             pred = model(im, augment=augment, visualize=visualize)
 

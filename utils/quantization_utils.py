@@ -394,8 +394,8 @@ class QuantizedYoloHead(nn.Module):
         self.model = copy.deepcopy(yolo_model.model[-1])
         self.model = self.model.eval()
 
-    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
-        return self.model(x)
+    def forward(self, x: List[torch.Tensor]) -> [List[torch.Tensor], torch.Tensor]:
+        return self.model(x) if self.model.training else self.model(x)[0]
 
 
 class CalibrationDataLoader(Dataset):
@@ -440,9 +440,9 @@ if __name__ == "__main__":
 
     torch.ao.quantization.convert(yolo_qint8, inplace=True)
     dummy_output = yolo_qint8(input)
-    pred = yolo_detector(dummy_output)[0]
+    pred = yolo_detector(dummy_output)
 
-    pred_fp32 = yolo_detector(yolo_fp32(input))[0]
+    pred_fp32 = yolo_detector(yolo_fp32(input))
 
     pred_qint = non_max_suppression(
         pred,

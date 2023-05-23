@@ -6,6 +6,7 @@ Usage:
     $ python path/to/train.py --data coco128.yaml --weights yolov3.pt --img 640
 """
 import argparse
+import platform
 import math
 import os
 import random
@@ -114,6 +115,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         nosave,
         workers,
         freeze,
+        qat,
     ) = (
         Path(opt.save_dir),
         opt.epochs,
@@ -128,6 +130,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         opt.nosave,
         opt.workers,
         opt.freeze,
+        opt.qat,
     )
 
     # Directories
@@ -210,6 +213,16 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         model = Model(cfg, ch=in_channel, nc=nc, anchors=hyp.get("anchors")).to(
             device
         )  # create
+
+    # Quantization Aware Training
+    if qat:
+        if "AMD64" in platform.machine():
+            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
+        elif "aarch64" in platform.machine():
+            torch.backends.quantized.engine = "qnnpack"
+            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
+
+        torch.ao.quantization.prepare_qat(model.model, inplace=True)
 
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
@@ -417,6 +430,15 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         start_epoch, epochs
     ):  # epoch ------------------------------------------------------------------
         model.train()
+
+        # Freeze quantizer parameters
+        if qat and epoch > 3:
+            model.model.apply(torch.ao.quantization.disable_observer)
+
+        # Freeze batch norm mean and variance estimates
+        if qat and epoch > 2:
+            # Freeze quantizer parameters
+            model.model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
 
         # Update image weights (optional, single-GPU only)
         if opt.image_weights:
@@ -714,6 +736,9 @@ def parse_opt(known=False):
     parser.add_argument("--gray-img", action="store_true", help="grayscale input image")
     parser.add_argument(
         "--setseed", action="store_true", help="apply normalizer or not"
+    )
+    parser.add_argument(
+        "--qat", action="store_true", help="apply quantization aware training"
     )
     parser.add_argument(
         "--seednum",
