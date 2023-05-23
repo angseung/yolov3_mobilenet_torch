@@ -6,7 +6,6 @@ Usage:
     $ python path/to/train.py --data coco128.yaml --weights yolov3.pt --img 640
 """
 import argparse
-import platform
 import math
 import os
 import random
@@ -78,7 +77,6 @@ from utils.torch_utils import (
     normalizer,
     to_grayscale,
 )
-from utils.quantization_utils import QuantizedYoloBackbone
 
 
 LOCAL_RANK = int(
@@ -116,7 +114,6 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         nosave,
         workers,
         freeze,
-        qat,
     ) = (
         Path(opt.save_dir),
         opt.epochs,
@@ -131,7 +128,6 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         opt.nosave,
         opt.workers,
         opt.freeze,
-        opt.qat,
     )
 
     # Directories
@@ -215,24 +211,6 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
             device
         )  # create
 
-    # Quantization Aware Training
-    if qat:
-        # fuse layers
-        QuantizedYoloBackbone.fuse_layers(model.eval())
-
-        # prepare for qat
-        if "AMD64" in platform.machine():
-            model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
-            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
-
-        elif "aarch64" in platform.machine():
-            torch.backends.quantized.engine = "qnnpack"
-            model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
-            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
-
-        model.train()
-        torch.ao.quantization.prepare_qat(model.model, inplace=True)
-
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
     for k, v in model.named_parameters():
@@ -260,35 +238,23 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         if hasattr(v, "bias") and isinstance(v.bias, nn.Parameter):  # bias
             g2.append(v.bias)
         if isinstance(v, nn.BatchNorm2d):  # weight (no decay)
-            g0.append(v.weight)  # it will be empty list in qat mode
+            g0.append(v.weight)
         elif hasattr(v, "weight") and isinstance(
             v.weight, nn.Parameter
         ):  # weight (with decay)
             g1.append(v.weight)
 
     if opt.adam:
-        if qat:
-            optimizer = Adam(
-                g1, lr=hyp["lr0"], betas=(hyp["momentum"], 0.999)
-            )  # adjust beta1 to momentum
-        else:
-            optimizer = Adam(
-                g0, lr=hyp["lr0"], betas=(hyp["momentum"], 0.999)
-            )
+        optimizer = Adam(
+            g0, lr=hyp["lr0"], betas=(hyp["momentum"], 0.999)
+        )  # adjust beta1 to momentum
     else:
-        if qat:
-            optimizer = SGD(g1, lr=hyp["lr0"], momentum=hyp["momentum"], nesterov=True, weight_decay=hyp["weight_decay"])
-        else:
-            optimizer = SGD(g0, lr=hyp["lr0"], momentum=hyp["momentum"], nesterov=True)
+        optimizer = SGD(g0, lr=hyp["lr0"], momentum=hyp["momentum"], nesterov=True)
 
-    if qat:
-        optimizer.add_param_group({"params": g2})  # add g2 (biases)
-    else:
-        optimizer.add_param_group(
-            {"params": g1, "weight_decay": hyp["weight_decay"]}
-        )  # add g1 with weight_decay
-        optimizer.add_param_group({"params": g2})  # add g2 (biases)
-
+    optimizer.add_param_group(
+        {"params": g1, "weight_decay": hyp["weight_decay"]}
+    )  # add g1 with weight_decay
+    optimizer.add_param_group({"params": g2})  # add g2 (biases)
     LOGGER.info(
         f"{colorstr('optimizer:')} {type(optimizer).__name__} with parameter groups "
         f"{len(g0)} weight, {len(g1)} weight (no decay), {len(g2)} bias"
@@ -452,15 +418,6 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     ):  # epoch ------------------------------------------------------------------
         model.train()
 
-        # Freeze quantizer parameters
-        if qat and epoch > 3:
-            model.model.apply(torch.ao.quantization.disable_observer)
-
-        # Freeze batch norm mean and variance estimates
-        if qat and epoch > 2:
-            # Freeze quantizer parameters
-            model.model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
-
         # Update image weights (optional, single-GPU only)
         if opt.image_weights:
             cw = (
@@ -562,7 +519,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
                 scaler.step(optimizer)  # optimizer.step
                 scaler.update()
                 optimizer.zero_grad()
-                if ema and not qat:
+                if ema:
                     ema.update(model)
                 last_opt_step = ni
 
@@ -759,9 +716,6 @@ def parse_opt(known=False):
         "--setseed", action="store_true", help="apply normalizer or not"
     )
     parser.add_argument(
-        "--qat", action="store_true", help="apply quantization aware training"
-    )
-    parser.add_argument(
         "--seednum",
         type=int,
         default=123,
@@ -901,7 +855,7 @@ def main(opt, callbacks=Callbacks()):
     # Checks
     if RANK in [-1, 0]:
         print_args(FILE.stem, opt)
-        # check_git_status()
+        check_git_status()
         check_requirements(exclude=["thop"])
 
     # Resume

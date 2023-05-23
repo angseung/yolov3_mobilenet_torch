@@ -288,27 +288,6 @@ class QuantizedYoloBackbone(nn.Module):
 
             # TODO: Implement fusing codes for other blocks here...
 
-    def check_fused_layers(self):
-        for _, block in self.model.model.named_children():
-            if isinstance(block, ConvBnReLU):
-                print(block)
-
-            elif isinstance(block, BottleneckReLU):
-                for _, sub_block in block.named_children():
-                    if isinstance(sub_block, ConvBnReLU):
-                        print(sub_block)
-
-            elif isinstance(block, C3ReLU):
-                for _, sub_block in block.named_children():
-                    if isinstance(sub_block, ConvBnReLU):
-                        print(sub_block)
-                    elif isinstance(sub_block, nn.Sequential):
-                        for _, sub_sub_block in sub_block.named_children():
-                            if isinstance(sub_sub_block, BottleneckReLU):
-                                for _, sub_sub_sub_block in sub_sub_block.named_children():
-                                    if isinstance(sub_sub_sub_block, ConvBnReLU):
-                                        print(sub_sub_sub_block)
-
     def _forward_impl_v3(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
 
