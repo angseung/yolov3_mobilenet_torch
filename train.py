@@ -218,7 +218,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     # Quantization Aware Training
     if qat:
         # fuse layers
-        QuantizedYoloBackbone.fuse_layers(model.eval())
+        # QuantizedYoloBackbone.fuse_layers(model.eval())
 
         # prepare for qat
         if "AMD64" in platform.machine():
@@ -259,23 +259,35 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         if hasattr(v, "bias") and isinstance(v.bias, nn.Parameter):  # bias
             g2.append(v.bias)
         if isinstance(v, nn.BatchNorm2d):  # weight (no decay)
-            g0.append(v.weight)
+            g0.append(v.weight)  # it will be empty list in qat mode
         elif hasattr(v, "weight") and isinstance(
             v.weight, nn.Parameter
         ):  # weight (with decay)
             g1.append(v.weight)
 
     if opt.adam:
-        optimizer = Adam(
-            g0, lr=hyp["lr0"], betas=(hyp["momentum"], 0.999)
-        )  # adjust beta1 to momentum
+        if qat:
+            optimizer = Adam(
+                g1, lr=hyp["lr0"], betas=(hyp["momentum"], 0.999)
+            )  # adjust beta1 to momentum
+        else:
+            optimizer = Adam(
+                g0, lr=hyp["lr0"], betas=(hyp["momentum"], 0.999)
+            )
     else:
-        optimizer = SGD(g0, lr=hyp["lr0"], momentum=hyp["momentum"], nesterov=True)
+        if qat:
+            optimizer = SGD(g1, lr=hyp["lr0"], momentum=hyp["momentum"], nesterov=True, weight_decay=hyp["weight_decay"])
+        else:
+            optimizer = SGD(g0, lr=hyp["lr0"], momentum=hyp["momentum"], nesterov=True)
 
-    optimizer.add_param_group(
-        {"params": g1, "weight_decay": hyp["weight_decay"]}
-    )  # add g1 with weight_decay
-    optimizer.add_param_group({"params": g2})  # add g2 (biases)
+    if qat:
+        optimizer.add_param_group({"params": g2})  # add g2 (biases)
+    else:
+        optimizer.add_param_group(
+            {"params": g1, "weight_decay": hyp["weight_decay"]}
+        )  # add g1 with weight_decay
+        optimizer.add_param_group({"params": g2})  # add g2 (biases)
+
     LOGGER.info(
         f"{colorstr('optimizer:')} {type(optimizer).__name__} with parameter groups "
         f"{len(g0)} weight, {len(g1)} weight (no decay), {len(g2)} bias"
