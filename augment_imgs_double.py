@@ -10,8 +10,10 @@ from utils.augment_utils import (
     random_resize,
     blend_bgra_on_bgr,
 )
+from utils.roi_utils import resize
 
 random.seed(123)
+target_imgsz = 1440
 
 if __name__ == "__main__":
     if "Windows" in platform.platform():
@@ -96,5 +98,6 @@ if __name__ == "__main__":
         # new_img = draw_bbox_on_img(new_img, new_label)
 
         # export augmented data
+        new_img = resize(new_img, target_imgsz)
         cv2.imwrite(f"{target_dir}/images/train/{bg_file_name}.jpg", new_img)
         write_label(f"{target_dir}/labels/train", bg_file_name, new_label)
