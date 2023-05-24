@@ -346,7 +346,7 @@ class YoloHead(nn.Module):
             raise AttributeError("Unsupported model type")
 
         self.model = copy.deepcopy(yolo_model.model[-1])
-        self.model = self.model.eval()
+        self.model.eval()
 
     def forward(self, x: List[torch.Tensor]) -> [List[torch.Tensor], torch.Tensor]:
         return self.model(x) if self.model.training else self.model(x)[0]
