@@ -387,13 +387,11 @@ if __name__ == "__main__":
     calibration_dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     input = torch.randn(1, 3, 320, 320)
-    fname: str = os.path.join("weights", "yolov5m-qat.pt")
+    fname = os.path.join("weights", "yolov5m-qat.pt")
     yolo_detector = YoloHead(fname)
     yolo_fp32 = YoloBackboneQuantizer(fname, yolo_version=5)
     yolo_qint8 = YoloBackboneQuantizer(fname, yolo_version=5)
-    fuse_model_recursive(yolo_qint8)
-    # yolo_qint8.fuse_model()
-    # yolo_qint8.check_fused_layers()
+    yolo_qint8.fuse_model()
     yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
     torch.ao.quantization.prepare(yolo_qint8, inplace=True)
 
@@ -414,11 +412,9 @@ if __name__ == "__main__":
     )
 
     # onnx export test
-    # failed.
-    # torch.onnx.errors.UnsupportedOperatorError: Exporting the operator 'quantized::batch_norm2d' to ONNX opset version 17 is not supported.
     torch.onnx.export(
         yolo_qint8,
         input,
         "../yolov3_backbone_qint8.onnx",
-        opset_version=11,
+        opset_version=13,
     )
