@@ -11,8 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
-from models.common import ConvBnReLU, BottleneckReLU, Concat, C3ReLU, SPPFReLU, DetectMultiBackend
-from models.yolo import Detect
+from models.common import ConvBnReLU, Concat, DetectMultiBackend
 from utils.general import non_max_suppression
 from utils.torch_utils import normalizer
 from utils.roi_utils import resize
@@ -23,7 +22,7 @@ ROOT = FILE.parent.parent  # root directory
 
 
 class AddModel(nn.Module):
-    def __init__(self, quantized=False):
+    def __init__(self):
         super().__init__()
         self.ff = torch.ao.nn.quantized.FloatFunctional()
 
@@ -41,7 +40,6 @@ class M(torch.nn.Module):
             3, 32, kernel_size=3, stride=1, padding=1, bias=False
         )
         self.upsample = torch.nn.Upsample(scale_factor=2, mode="bilinear")  # Success
-        # self.upsample = torch.nn.Upsample(scale_factor=2, mode="nearest")  # Success
         self.bn = torch.nn.BatchNorm2d(32)
         self.concat = torch.cat  # Success
         self.relu = torch.nn.ReLU()
@@ -59,7 +57,6 @@ class M(torch.nn.Module):
 
 
 class QuantBasicBlock(BasicBlock):
-    # ff = torch.ao.nn.quantized.FloatFunctional()
     ff = torch.ao.nn.quantized.FloatFunctional()
     relu1 = nn.ReLU()
     relu2 = nn.ReLU()
@@ -353,6 +350,14 @@ class YoloHead(nn.Module):
 
 
 def fuse_model_recursive(blocks: nn.Module):
+    """
+    A function for fusing conv-bn-relu layers
+    Parameters
+    ----------
+    blocks: A nn.Module type model to be fused
+    -------
+
+    """
     for _, block in blocks.named_children():
         if isinstance(block, ConvBnReLU):
             fuse_modules(block, [["conv", "bn", "act"]], inplace=True)
