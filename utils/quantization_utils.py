@@ -223,70 +223,7 @@ class YoloBackboneQuantizer(nn.Module):
         self.model = self.model.eval()
 
     def fuse_model(self):
-        for _, block in self.model.model.named_children():
-            if isinstance(block, ConvBnReLU):
-                fuse_modules(block, [["conv", "bn", "act"]], inplace=True)
-
-            elif isinstance(block, BottleneckReLU):
-                for _, sub_block in block.named_children():
-                    if isinstance(sub_block, ConvBnReLU):
-                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
-
-            elif isinstance(block, C3ReLU):
-                for _, sub_block in block.named_children():
-                    if isinstance(sub_block, ConvBnReLU):
-                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
-                    elif isinstance(sub_block, nn.Sequential):
-                        for _, sub_sub_block in sub_block.named_children():
-                            if isinstance(sub_sub_block, BottleneckReLU):
-                                for _, sub_sub_sub_block in sub_sub_block.named_children():
-                                    if isinstance(sub_sub_sub_block, ConvBnReLU):
-                                        fuse_modules(sub_sub_sub_block, [["conv", "bn", "act"]], inplace=True)
-
-            elif isinstance(block, SPPFReLU):
-                for _, sub_block in block.named_children():
-                    if isinstance(sub_block, ConvBnReLU):
-                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
-
-            elif isinstance(block, nn.Sequential):
-                for _, sub_block in block.named_children():
-                    if isinstance(sub_block, ConvBnReLU):
-                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
-
-    @staticmethod
-    def fuse_layers(model):
-        for _, block in model.model.named_children():
-            if isinstance(block, ConvBnReLU):
-                fuse_modules(block, [["conv", "bn", "act"]], inplace=True)
-
-            elif isinstance(block, BottleneckReLU):
-                for _, sub_block in block.named_children():
-                    if isinstance(sub_block, ConvBnReLU):
-                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
-
-            elif isinstance(block, C3ReLU):
-                for _, sub_block in block.named_children():
-                    if isinstance(sub_block, ConvBnReLU):
-                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
-                    elif isinstance(sub_block, nn.Sequential):
-                        for _, sub_sub_block in sub_block.named_children():
-                            if isinstance(sub_sub_block, BottleneckReLU):
-                                for _, sub_sub_sub_block in sub_sub_block.named_children():
-                                    if isinstance(sub_sub_sub_block, ConvBnReLU):
-                                        fuse_modules(sub_sub_sub_block, [["conv", "bn", "act"]], inplace=True)
-
-            elif isinstance(block, SPPFReLU):
-                for j, sub_block in block.named_children():
-                    if isinstance(sub_block, ConvBnReLU):
-                        fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
-
-            elif isinstance(block, Detect):
-                for _, sub_block in block.named_children():
-                    for _, sub_sub_block in sub_block.named_children():
-                        if isinstance(sub_block, ConvBnReLU):
-                            fuse_modules(sub_block, [["conv", "bn", "act"]], inplace=True)
-
-            # TODO: Implement fusing codes for other blocks here...
+        fuse_model_recursive(self.model)
 
     def _forward_impl_v3(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
@@ -415,6 +352,14 @@ class YoloHead(nn.Module):
         return self.model(x) if self.model.training else self.model(x)[0]
 
 
+def fuse_model_recursive(blocks: nn.Module):
+    for _, block in blocks.named_children():
+        if isinstance(block, ConvBnReLU):
+            fuse_modules(block, [["conv", "bn", "act"]], inplace=True)
+        else:
+            fuse_model_recursive(block)
+
+
 class CalibrationDataLoader(Dataset):
     def __init__(self, img_dir: str, target_size: int = 320):
         super().__init__()
@@ -446,8 +391,9 @@ if __name__ == "__main__":
     yolo_detector = YoloHead(fname)
     yolo_fp32 = YoloBackboneQuantizer(fname, yolo_version=5)
     yolo_qint8 = YoloBackboneQuantizer(fname, yolo_version=5)
-    yolo_qint8.fuse_model()
-    yolo_qint8.check_fused_layers()
+    fuse_model_recursive(yolo_qint8)
+    # yolo_qint8.fuse_model()
+    # yolo_qint8.check_fused_layers()
     yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
     torch.ao.quantization.prepare(yolo_qint8, inplace=True)
 
