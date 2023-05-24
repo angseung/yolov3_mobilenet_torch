@@ -62,8 +62,8 @@ from utils.detect_utils import read_bboxes, correction_plate
 from utils.roi_utils import crop_region_of_plates, resize, rescale_roi
 from utils.augmentations import wrap_letterbox
 from utils.quantization_utils import (
-    QuantizedYoloBackbone,
-    QuantizedYoloHead,
+    YoloBackboneQuantizer,
+    YoloHead,
     CalibrationDataLoader,
 )
 
@@ -184,12 +184,12 @@ def run(
 
     if quantize_model:
         if isinstance(model, DetectMultiBackend):
-            head = QuantizedYoloHead(model.model)  # nn.Sequential
-            model = QuantizedYoloBackbone(model.model, yolo_version=5)  # nn.Sequential
+            head = YoloHead(model.model)  # nn.Sequential
+            model = YoloBackboneQuantizer(model.model, yolo_version=5)  # nn.Sequential
 
         elif isinstance(model, torch.nn.Module):
-            head = QuantizedYoloHead(model)  # nn.Sequential
-            model = QuantizedYoloBackbone(model, yolo_version=5)  # nn.Sequential
+            head = YoloHead(model)  # nn.Sequential
+            model = YoloBackboneQuantizer(model, yolo_version=5)  # nn.Sequential
 
         model.fuse_model()
 

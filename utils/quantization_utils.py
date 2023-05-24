@@ -192,7 +192,7 @@ class QuantModel(nn.Module):
         return x
 
 
-class QuantizedYoloBackbone(nn.Module):
+class YoloBackboneQuantizer(nn.Module):
     def __init__(self, model: Union[str, nn.Module] = None, yolo_version: int = 3):
         super().__init__()
         self.yolo_version = yolo_version
@@ -385,7 +385,7 @@ class QuantizedYoloBackbone(nn.Module):
             return self._forward_impl_v5(x)
 
 
-class QuantizedYoloHead(nn.Module):
+class YoloHead(nn.Module):
     def __init__(self, model: Union[str, nn.Module] = None):
         super().__init__()
         if isinstance(model, str):
@@ -443,9 +443,9 @@ if __name__ == "__main__":
 
     input = torch.randn(1, 3, 320, 320)
     fname: str = os.path.join("weights", "yolov5m-qat.pt")
-    yolo_detector = QuantizedYoloHead(fname)
-    yolo_fp32 = QuantizedYoloBackbone(fname, yolo_version=5)
-    yolo_qint8 = QuantizedYoloBackbone(fname, yolo_version=5)
+    yolo_detector = YoloHead(fname)
+    yolo_fp32 = YoloBackboneQuantizer(fname, yolo_version=5)
+    yolo_qint8 = YoloBackboneQuantizer(fname, yolo_version=5)
     yolo_qint8.fuse_model()
     yolo_qint8.check_fused_layers()
     yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
