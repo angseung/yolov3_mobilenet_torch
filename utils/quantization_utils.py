@@ -217,10 +217,10 @@ class YoloBackboneQuantizer(nn.Module):
         else:
             raise AttributeError("Unsupported model type")
 
+        self.model.eval()
         self.quant = torch.ao.quantization.QuantStub()
         self.model.model[-1] = nn.Identity()
         self.dequant = torch.ao.quantization.DeQuantStub()
-        self.model = self.model.eval()
 
     def fuse_model(self):
         fuse_model_recursive(self.model)
