@@ -38,6 +38,8 @@ RANK = int(os.getenv("RANK", -1))
 matplotlib.rc("font", **{"size": 11})
 matplotlib.use("Agg")  # for writing to files only
 
+FILE = Path(__file__).resolve()
+ROOT = FILE.parent.parent  # root directory
 
 class Colors:
     # Ultralytics color palette https://ultralytics.com/
@@ -80,7 +82,7 @@ class Colors:
 colors = Colors()  # create instance for 'from utils.plots import colors'
 
 
-def check_font(font="fonts/NanumBarunGothic.ttf", size=10):
+def check_font(font=os.path.join(ROOT, "fonts", "NanumBarunGothic.ttf"), size=10):
     # Return a PIL TrueType Font, downloading to CONFIG_DIR if necessary
     font = Path(font)
     font = font if font.exists() else (CONFIG_DIR / font.name)

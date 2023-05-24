@@ -1,13 +1,25 @@
+import os.path
 import platform
 import copy
 from typing import *
+from pathlib import Path
+import cv2
 import torch
 from torch import nn as nn
+from torch.ao.quantization import fuse_modules
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
-from torch.ao.nn.quantized import Conv2d as qConv2d
-from models.resnet import resnet18 as ResNet18
-from models.resnet import resnet152 as ResNet152
+from models.common import ConvBnReLU, BottleneckReLU, Concat, C3ReLU, SPPFReLU, DetectMultiBackend
+from models.yolo import Detect
+from utils.general import non_max_suppression
+from utils.torch_utils import normalizer
+from utils.roi_utils import resize
+from utils.augmentations import wrap_letterbox
+
+FILE = Path(__file__).resolve()
+ROOT = FILE.parent.parent  # root directory
 
 
 class AddModel(nn.Module):
@@ -28,14 +40,20 @@ class M(torch.nn.Module):
         self.conv = torch.nn.Conv2d(
             3, 32, kernel_size=3, stride=1, padding=1, bias=False
         )
+        self.upsample = torch.nn.Upsample(scale_factor=2, mode="bilinear")  # Success
+        # self.upsample = torch.nn.Upsample(scale_factor=2, mode="nearest")  # Success
         self.bn = torch.nn.BatchNorm2d(32)
+        self.concat = torch.cat  # Success
         self.relu = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, x):
         x = self.conv(x)
+        x = self.upsample(x)
         x = self.bn(x)
+        x1 = x.clone()
         x = self.relu(x)
+        x = self.concat([x, x1], dim=1)
         x = self.sigmoid(x)
         return x
 
@@ -174,51 +192,229 @@ class QuantModel(nn.Module):
         return x
 
 
+class YoloBackboneQuantizer(nn.Module):
+    def __init__(self, model: Union[str, nn.Module] = None, yolo_version: int = 3):
+        super().__init__()
+        self.yolo_version = yolo_version
+
+        if isinstance(model, str):
+            if model.endswith(".pt"):
+                self.model = torch.load(
+                    os.path.join(ROOT, model), map_location=torch.device("cpu")
+                )
+                if isinstance(self.model, dict):
+                    self.model = self.model["model"].float()
+            elif model.endswith(".yaml"):
+                self.model = DetectMultiBackend(
+                    os.path.join(ROOT, model), torch.device("cpu"), False
+                )
+        elif isinstance(model, nn.Module):
+            self.model = model
+
+        elif isinstance(model, DetectMultiBackend):
+            self.model = model.model
+
+        else:
+            raise AttributeError("Unsupported model type")
+
+        self.quant = torch.ao.quantization.QuantStub()
+        self.model.model[-1] = nn.Identity()
+        self.dequant = torch.ao.quantization.DeQuantStub()
+        self.model = self.model.eval()
+
+    def fuse_model(self):
+        fuse_model_recursive(self.model)
+
+    def _forward_impl_v3(self, x: torch.Tensor) -> List[torch.Tensor]:
+        x = self.quant(x)
+
+        for i, block in self.model.model.named_children():
+            if isinstance(block, Concat):
+                if i == "18":
+                    x = block([x17, x8])
+                elif i == "25":
+                    x = block([x24, x6])
+            else:  # ConvBnReLU, BottleneckReLU
+                if i == "16":
+                    x = block(x14)
+                elif i == "23":
+                    x = block(x21)
+                else:
+                    x = block(x)
+
+                # save feature map for concat/conv layers...
+                if i == "6":
+                    x6 = x.clone()
+                elif i == "8":
+                    x8 = x.clone()
+                elif i == "14":
+                    x14 = x.clone()
+                elif i == "15":
+                    x15 = x.clone()
+                elif i == "17":
+                    x17 = x.clone()
+                elif i == "21":
+                    x21 = x.clone()
+                elif i == "22":
+                    x22 = x.clone()
+                elif i == "24":
+                    x24 = x.clone()
+                elif i == "27":
+                    x27 = x.clone()
+
+        x15 = self.dequant(x15)
+        x22 = self.dequant(x22)
+        x27 = self.dequant(x27)
+
+        return [x27, x22, x15]
+
+    def _forward_impl_v5(self, x: torch.Tensor) -> List[torch.Tensor]:
+        x = self.quant(x)
+
+        for i, block in self.model.model.named_children():
+            if isinstance(block, Concat):
+                if i == "12":
+                    x = block([x11, x6])
+                elif i == "16":
+                    x = block([x15, x4])
+                elif i == "19":
+                    x = block([x18, x14])
+                elif i == "22":
+                    x = block([x21, x10])
+            else:  # ConvBnReLU, BottleneckReLU, C3ReLU, SPPFReLU
+                x = block(x)
+
+                # save feature map for concat/conv layers...
+                if i == "4":
+                    x4 = x.clone()
+                elif i == "6":
+                    x6 = x.clone()
+                elif i == "10":
+                    x10 = x.clone()
+                elif i == "11":
+                    x11 = x.clone()
+                elif i == "14":
+                    x14 = x.clone()
+                elif i == "15":
+                    x15 = x.clone()
+                elif i == "17":
+                    x17 = x.clone()
+                elif i == "18":
+                    x18 = x.clone()
+                elif i == "20":
+                    x20 = x.clone()
+                elif i == "21":
+                    x21 = x.clone()
+                elif i == "23":
+                    x23 = x.clone()
+
+        x17 = self.dequant(x17)
+        x20 = self.dequant(x20)
+        x23 = self.dequant(x23)
+
+        return [x17, x20, x23]
+
+    def forward(self, x: Union[torch.Tensor, List[torch.Tensor]]) -> Union[torch.Tensor, List[torch.Tensor]]:
+        if self.yolo_version == 3:
+            return self._forward_impl_v3(x)
+
+        elif self.yolo_version == 5:
+            return self._forward_impl_v5(x)
+
+
+class YoloHead(nn.Module):
+    def __init__(self, model: Union[str, nn.Module] = None):
+        super().__init__()
+        if isinstance(model, str):
+            if model.endswith(".pt"):
+                yolo_model = torch.load(
+                    os.path.join(ROOT, model), map_location=torch.device("cpu")
+                )
+                if isinstance(yolo_model, dict):
+                    yolo_model = yolo_model["model"].float()
+            elif model.endswith(".yaml"):
+                yolo_model = DetectMultiBackend(
+                    os.path.join(model), torch.device("cpu"), False
+                )
+        elif isinstance(model, nn.Module):
+            yolo_model = model
+
+        elif isinstance(model, DetectMultiBackend):
+            yolo_model = model.model
+
+        else:
+            raise AttributeError("Unsupported model type")
+
+        self.model = copy.deepcopy(yolo_model.model[-1])
+        self.model = self.model.eval()
+
+    def forward(self, x: List[torch.Tensor]) -> [List[torch.Tensor], torch.Tensor]:
+        return self.model(x) if self.model.training else self.model(x)[0]
+
+
+def fuse_model_recursive(blocks: nn.Module):
+    for _, block in blocks.named_children():
+        if isinstance(block, ConvBnReLU):
+            fuse_modules(block, [["conv", "bn", "act"]], inplace=True)
+        else:
+            fuse_model_recursive(block)
+
+
+class CalibrationDataLoader(Dataset):
+    def __init__(self, img_dir: str, target_size: int = 320):
+        super().__init__()
+        self.transform = transforms.Compose([transforms.ToTensor(), normalizer()])
+        self.target_size = target_size
+        self.img_dir = img_dir
+        self.img_list = os.listdir(img_dir)
+
+    def __getitem__(self, item):
+        img = cv2.imread(f"{self.img_dir}/{self.img_list[item]}")  # BGR
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # RGB
+        img = resize(img, self.target_size)
+        img = wrap_letterbox(img, self.target_size)[0]  # padded as square shape
+
+        return self.transform(img)
+
+    def __len__(self):
+        return len(self.img_list)
+
+
 if __name__ == "__main__":
     # create a model instance
     architecture = platform.uname().machine
+    dataset = CalibrationDataLoader(os.path.join(ROOT, "data", "cropped"))
+    calibration_dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
-    # model_fp32 = ResNet18().eval()
-    model_fp32 = M().eval()
-    model_ori = copy.deepcopy(model_fp32)
+    input = torch.randn(1, 3, 320, 320)
+    fname = os.path.join("weights", "yolov5m-qat.pt")
+    yolo_detector = YoloHead(fname)
+    yolo_fp32 = YoloBackboneQuantizer(fname, yolo_version=5)
+    yolo_qint8 = YoloBackboneQuantizer(fname, yolo_version=5)
+    yolo_qint8.fuse_model()
+    yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
+    torch.ao.quantization.prepare(yolo_qint8, inplace=True)
 
-    # fuse BasicBlock for ResNet18 ONLY
-    if "ResNet" in model_fp32.__class__.__name__:
-        fuse_resnet(model_fp32)
+    for i, img in enumerate(calibration_dataloader):
+        print(f"\rcalibrating... {i + 1} / {dataset.__len__()}", end="")
+        yolo_qint8(img)
 
-    else:
-        torch.quantization.fuse_modules(
-            model_fp32, [["conv", "bn", "relu"]], inplace=True
-        )
+    torch.ao.quantization.convert(yolo_qint8, inplace=True)
+    dummy_output = yolo_qint8(input)
+    pred = yolo_detector(dummy_output)
 
-    model_qint8 = QuantModel(model=model_fp32)
-    model_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
+    pred_fp32 = yolo_detector(yolo_fp32(input))
 
-    # the model that will observe activation tensors during calibration.
-    torch.ao.quantization.prepare(model_qint8, inplace=True)
-    input_fp32 = torch.randn(1, 3, 224, 224)
-
-    # it calibrates model
-    model_qint8(input_fp32)
-
-    # quantize model
-    model_int8 = torch.ao.quantization.convert(model_qint8)
-
-    # run the model, relevant calculations will happen in int8
-    res = model_int8(input_fp32)
-    res_fp = model_ori(input_fp32)
+    pred_qint = non_max_suppression(
+        pred,
+        0.1,
+        0.25,
+    )
 
     # onnx export test
     torch.onnx.export(
-        model_ori,
-        input_fp32,
-        "../model_ori.onnx",
-        opset_version=17,
-    )
-
-    torch.onnx.export(
-        model_int8,
-        input_fp32,
-        "../model_int8.onnx",
-        opset_version=17,  # offset <= 11 occurs error
+        yolo_qint8,
+        input,
+        "../yolov3_backbone_qint8.onnx",
+        opset_version=13,
     )
