@@ -158,14 +158,14 @@ def fuse_resnet(model_fp32: nn.Module) -> None:
     for module_name, module in model_fp32.named_children():
         if "layer" in module_name:
             for basic_block_name, basic_block in module.named_children():
-                torch.quantization.fuse_modules(
+                torch.ao.quantization.fuse_modules(
                     basic_block,
                     [["conv1", "bn1", "relu1"], ["conv2", "bn2"]],
                     inplace=True,
                 )
                 for sub_block_name, sub_block in basic_block.named_children():
                     if sub_block_name == "downsample":
-                        torch.quantization.fuse_modules(
+                        torch.ao.quantization.fuse_modules(
                             sub_block, [["0", "1"]], inplace=True
                         )
 
