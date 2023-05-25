@@ -195,7 +195,7 @@ def run(
         if "AMD64" in platform.machine() or "x86_64" in platform.machine():  # intel x86-64, Windows & Linux
             model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
 
-        elif "aarch64" in platform.machine():  # aarch64
+        elif "aarch64" in platform.machine() or "arm64" in platform.machine():  # aarch64
             torch.backends.quantized.engine = "qnnpack"
             model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
 

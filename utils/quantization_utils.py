@@ -399,7 +399,13 @@ if __name__ == "__main__":
     yolo_fp32 = YoloBackboneQuantizer(fname, yolo_version=5)
     yolo_qint8 = YoloBackboneQuantizer(fname, yolo_version=5)
     yolo_qint8.fuse_model()
-    yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
+
+    if "AMD64" in platform.machine() or "x86_64" in platform.machine():
+        yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
+    elif "aarch64" in platform.machine() or "arm64" in platform.machine():
+        torch.backends.quantized.engine = "qnnpack"
+        yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
+
     torch.ao.quantization.prepare(yolo_qint8, inplace=True)
 
     for i, img in enumerate(calibration_dataloader):
