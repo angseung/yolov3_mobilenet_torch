@@ -6,6 +6,7 @@ Usage:
     $ python path/to/train.py --data coco128.yaml --weights yolov3.pt --img 640
 """
 import argparse
+import platform
 import math
 import os
 import random
@@ -77,6 +78,7 @@ from utils.torch_utils import (
     normalizer,
     to_grayscale,
 )
+from utils.quantization_utils import fuse_conv_bn_relu
 
 
 LOCAL_RANK = int(
@@ -114,6 +116,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         nosave,
         workers,
         freeze,
+        qat,
     ) = (
         Path(opt.save_dir),
         opt.epochs,
@@ -128,6 +131,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         opt.nosave,
         opt.workers,
         opt.freeze,
+        opt.qat,
     )
 
     # Directories
@@ -210,6 +214,24 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
         model = Model(cfg, ch=in_channel, nc=nc, anchors=hyp.get("anchors")).to(
             device
         )  # create
+
+    # Quantization Aware Training
+    if qat:
+        # fuse layers
+        fuse_conv_bn_relu(model.eval())
+
+        # prepare for qat
+        if "AMD64" in platform.machine() or "x86_64" in platform.machine():
+            model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
+            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
+
+        elif "aarch64" in platform.machine():
+            torch.backends.quantized.engine = "qnnpack"
+            model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
+            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
+
+        model.train()
+        torch.ao.quantization.prepare_qat(model.model, inplace=True)
 
     # Freeze
     freeze = [f"model.{x}." for x in range(freeze)]  # layers to freeze
@@ -739,6 +761,9 @@ def parse_opt(known=False):
     )
     parser.add_argument(
         "--noautoanchor", action="store_true", help="disable autoanchor check"
+    )
+    parser.add_argument(
+        "--qat", action="store_true", help="run as Quantization aware training"
     )
     parser.add_argument(
         "--evolve",
