@@ -193,6 +193,7 @@ class YoloBackboneQuantizer(nn.Module):
     def __init__(self, model: Union[str, nn.Module] = None, yolo_version: int = 3):
         super().__init__()
         self.yolo_version = yolo_version
+        self.is_fused = False
 
         if isinstance(model, str):
             if model.endswith(".pt"):
@@ -221,6 +222,7 @@ class YoloBackboneQuantizer(nn.Module):
 
     def fuse_model(self):
         fuse_model_recursive(self.model)
+        self.is_fused = True
 
     def _forward_impl_v3(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
