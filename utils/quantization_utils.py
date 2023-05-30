@@ -313,7 +313,8 @@ class YoloBackboneQuantizer(nn.Module):
 
         return [x17, x20, x23]
 
-    def forward(self, x: Union[torch.Tensor, List[torch.Tensor]]) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
+    def forward(self, x: Union[torch.Tensor, List[torch.Tensor]]
+                ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
         if self.yolo_version == 3:
             return self._forward_impl_v3(x)
 
@@ -347,7 +348,8 @@ class YoloHead(nn.Module):
         self.model = copy.deepcopy(yolo_model.model[-1])
         self.model.eval()
 
-    def forward(self, x: List[torch.Tensor]) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
+    def forward(self, x: List[torch.Tensor]
+                ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
         return self.model(x) if self.model.training else self.model(x)[0]
 
 
