@@ -182,13 +182,23 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
+        ## check yolo version
+        if "v3" in weights:
+            yolo_version = 3
+        elif "v4" in weights:
+            yolo_version = 4
+        elif "v5" in weights:
+            yolo_version = 5
+
+        print(f"Detected Yolo Version is {yolo_version}.")
+
         if isinstance(model, DetectMultiBackend):
             head = YoloHead(model.model)  # nn.Sequential
-            model = YoloBackboneQuantizer(model.model, yolo_version=4)  # nn.Sequential
+            model = YoloBackboneQuantizer(model.model, yolo_version=yolo_version)  # nn.Sequential
 
         elif isinstance(model, torch.nn.Module):
             head = YoloHead(model)  # nn.Sequential
-            model = YoloBackboneQuantizer(model, yolo_version=4)  # nn.Sequential
+            model = YoloBackboneQuantizer(model, yolo_version=yolo_version)  # nn.Sequential
 
         model.fuse_model()
 
