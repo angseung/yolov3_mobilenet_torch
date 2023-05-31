@@ -13,7 +13,6 @@ Usage:
 """
 
 import argparse
-import copy
 import os
 import platform
 import sys
@@ -145,7 +144,7 @@ def run(
     # use ROI detection with yolo
     if roi_crop and use_yolo:
         # TODO: compare performance of each models, 201~204.pt
-        pth_path = os.path.join(str(FILE.parents[0]), "weights", "202.pt")
+        pth_path = os.path.join(str(FILE.parents[0]), "weights", "303.pt")
         roi_model = DetectMultiBackend(pth_path, device=device, dnn=dnn)
         roi_model.model.float()
 
@@ -183,20 +182,40 @@ def run(
         model.model.half() if half else model.model.float()
 
     if quantize_model:
+        ## check yolo version
+        if "v3" in weights:
+            yolo_version = 3
+        elif "v4" in weights:
+            yolo_version = 4
+        elif "v5" in weights:
+            yolo_version = 5
+        else:
+            yolo_version = 5
+
+        print(f"Detected Yolo Version is {yolo_version}.")
+
         if isinstance(model, DetectMultiBackend):
             head = YoloHead(model.model)  # nn.Sequential
-            model = YoloBackboneQuantizer(model.model, yolo_version=5)  # nn.Sequential
+            model = YoloBackboneQuantizer(
+                model.model, yolo_version=yolo_version
+            )  # nn.Sequential
 
         elif isinstance(model, torch.nn.Module):
             head = YoloHead(model)  # nn.Sequential
-            model = YoloBackboneQuantizer(model, yolo_version=5)  # nn.Sequential
+            model = YoloBackboneQuantizer(
+                model, yolo_version=yolo_version
+            )  # nn.Sequential
 
         model.fuse_model()
 
-        if "AMD64" in platform.machine():  # intel x86-64
+        if (
+            "AMD64" in platform.machine() or "x86_64" in platform.machine()
+        ):  # intel x86-64, Windows & Linux
             model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
 
-        elif "aarch64" in platform.machine():  # aarch64
+        elif (
+            "aarch64" in platform.machine() or "arm64" in platform.machine()
+        ):  # aarch64
             torch.backends.quantized.engine = "qnnpack"
             model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
 
