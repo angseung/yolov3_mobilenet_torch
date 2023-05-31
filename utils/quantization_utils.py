@@ -267,6 +267,52 @@ class YoloBackboneQuantizer(nn.Module):
 
         return [x27, x22, x15]
 
+    def _forward_impl_v4(self, x: torch.Tensor) -> List[torch.Tensor]:
+        x = self.quant(x)
+
+        for i, block in self.model.model.named_children():
+            if isinstance(block, Concat):
+                if i == "25":
+                    x = block([x24, x12])
+                elif i == "29":
+                    x = block([x28, x9])
+                elif i == "32":
+                    x = block([x31, x27])
+                elif i == "35":
+                    x = block([x34, x23])
+            else:  # ConvBnReLU, BottleneckReLU, BottleneckCSPReLU, SPPReLU
+                x = block(x)
+
+                # save feature map for concat/conv layers...
+                if i == "9":
+                    x9 = x.clone()
+                elif i == "12":
+                    x12 = x.clone()
+                elif i == "23":
+                    x23 = x.clone()
+                elif i == "24":
+                    x24 = x.clone()
+                elif i == "27":
+                    x27 = x.clone()
+                elif i == "28":
+                    x28 = x.clone()
+                elif i == "30":
+                    x30 = x.clone()
+                elif i == "31":
+                    x31 = x.clone()
+                elif i == "33":
+                    x33 = x.clone()
+                elif i == "34":
+                    x34 = x.clone()
+                elif i == "36":
+                    x36 = x.clone()
+
+        x30 = self.dequant(x30)
+        x33 = self.dequant(x33)
+        x36 = self.dequant(x36)
+
+        return [x30, x33, x36]
+
     def _forward_impl_v5(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
 
@@ -317,6 +363,9 @@ class YoloBackboneQuantizer(nn.Module):
                 ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
         if self.yolo_version == 3:
             return self._forward_impl_v3(x)
+
+        elif self.yolo_version == 4:
+            return self._forward_impl_v4(x)
 
         elif self.yolo_version == 5:
             return self._forward_impl_v5(x)
