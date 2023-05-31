@@ -344,6 +344,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             DWSBottleneck,
             GhostBottleneck,
             SPP,
+            SPPReLU,
             SPPF,
             SPPFReLU,
             DWConv,
@@ -351,6 +352,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             Focus,
             CrossConv,
             BottleneckCSP,
+            BottleneckCSPReLU,
             C3,
             C3ReLU,
             C3TR,
@@ -362,7 +364,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                 c2 = make_divisible(c2 * gw, 8)
 
             args = [c1, c2, *args[1:]]
-            if m in [BottleneckCSP, C3, C3TR, C3Ghost, C3ReLU]:
+            if m in [BottleneckCSP, BottleneckCSPReLU, C3, C3TR, C3Ghost, C3ReLU]:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is nn.BatchNorm2d:
