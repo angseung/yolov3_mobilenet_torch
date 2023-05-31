@@ -144,7 +144,7 @@ def run(
     # use ROI detection with yolo
     if roi_crop and use_yolo:
         # TODO: compare performance of each models, 201~204.pt
-        pth_path = os.path.join(str(FILE.parents[0]), "weights", "202.pt")
+        pth_path = os.path.join(str(FILE.parents[0]), "weights", "303.pt")
         roi_model = DetectMultiBackend(pth_path, device=device, dnn=dnn)
         roi_model.model.float()
 
@@ -188,6 +188,8 @@ def run(
         elif "v4" in weights:
             yolo_version = 4
         elif "v5" in weights:
+            yolo_version = 5
+        else:
             yolo_version = 5
 
         print(f"Detected Yolo Version is {yolo_version}.")
