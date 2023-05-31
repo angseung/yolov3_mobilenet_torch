@@ -196,18 +196,26 @@ def run(
 
         if isinstance(model, DetectMultiBackend):
             head = YoloHead(model.model)  # nn.Sequential
-            model = YoloBackboneQuantizer(model.model, yolo_version=yolo_version)  # nn.Sequential
+            model = YoloBackboneQuantizer(
+                model.model, yolo_version=yolo_version
+            )  # nn.Sequential
 
         elif isinstance(model, torch.nn.Module):
             head = YoloHead(model)  # nn.Sequential
-            model = YoloBackboneQuantizer(model, yolo_version=yolo_version)  # nn.Sequential
+            model = YoloBackboneQuantizer(
+                model, yolo_version=yolo_version
+            )  # nn.Sequential
 
         model.fuse_model()
 
-        if "AMD64" in platform.machine() or "x86_64" in platform.machine():  # intel x86-64, Windows & Linux
+        if (
+            "AMD64" in platform.machine() or "x86_64" in platform.machine()
+        ):  # intel x86-64, Windows & Linux
             model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
 
-        elif "aarch64" in platform.machine() or "arm64" in platform.machine():  # aarch64
+        elif (
+            "aarch64" in platform.machine() or "arm64" in platform.machine()
+        ):  # aarch64
             torch.backends.quantized.engine = "qnnpack"
             model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
 
