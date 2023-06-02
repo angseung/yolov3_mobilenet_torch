@@ -109,6 +109,20 @@ class DWConv(Conv):
         super().__init__(c1, c2, k, s, p, g=math.gcd(c1, c2), act=act)
 
 
+class DWConvReLU(Conv):
+    # Depth-wise convolution class
+    def __init__(
+        self, c1, c2, k=1, s=1, p=1, act=True
+    ):  # ch_in, ch_out, kernel, stride, padding, groups
+        # groups : greatest common divisor...
+        super().__init__(c1, c2, k, s, p, g=math.gcd(c1, c2), act=act)
+        self.act = (
+            nn.ReLU()
+            if act is True
+            else (act if isinstance(act, nn.Module) else nn.Identity())
+        )
+
+
 class DWSConv(nn.Module):
     def __init__(self, c1, c2, k=1, s=1, p=1, act=True):
         super().__init__()
@@ -148,7 +162,7 @@ class DWSConv(nn.Module):
 class DWSConvReLU(nn.Module):
     def __init__(self, c1, c2, k=1, s=1, p=1, act=True):
         super().__init__()
-        self.dconv = DWConv(c1, c1, k, s=s, p=p, act=act)
+        self.dconv = DWConvReLU(c1, c1, k, s=s, p=p, act=act)
         self.bn_dw = nn.BatchNorm2d(c1)
         self.act_dw = (
             nn.ReLU()

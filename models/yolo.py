@@ -349,6 +349,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             SPPF,
             SPPFReLU,
             DWConv,
+            DWConvReLU,
             DWSConvReLU,
             MixConv2d,
             Focus,
