@@ -302,9 +302,10 @@ class DWSBottleneckReLU(nn.Module):
         self.cv1 = ConvBnReLU(c1, c_, 1, 1)  # pconv
         self.cv2 = DWSConvReLU(c1=c_, c2=c2, k=3, s=1)
         self.add = shortcut and c1 == c2
+        self.skip_add = FloatFunctional()
 
     def forward(self, x):
-        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+        return self.skip_add.add(x, self.cv2(self.cv1(x))) if self.add else self.cv2(self.cv1(x))
 
 
 class BottleneckCSP(nn.Module):
