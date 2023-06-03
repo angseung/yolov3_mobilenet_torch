@@ -11,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
-from models.common import ConvBnReLU, Concat, DetectMultiBackend
+from models.common import ConvBnReLU, Concat, DetectMultiBackend, DWSConvReLU
 from utils.general import non_max_suppression
 from utils.torch_utils import normalizer
 from utils.roi_utils import resize
@@ -445,10 +445,10 @@ if __name__ == "__main__":
     calibration_dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     input = torch.randn(1, 3, 320, 320)
-    fname = os.path.join("weights", "yolov5m-qat.pt")
+    fname = os.path.join("weights", "yolov3-nano-qat.pt")
     yolo_detector = YoloHead(fname)
-    yolo_fp32 = YoloBackboneQuantizer(fname, yolo_version=5)
-    yolo_qint8 = YoloBackboneQuantizer(fname, yolo_version=5)
+    yolo_fp32 = YoloBackboneQuantizer(fname, yolo_version=3)
+    yolo_qint8 = YoloBackboneQuantizer(fname, yolo_version=3)
     yolo_qint8.fuse_model()
 
     if "AMD64" in platform.machine() or "x86_64" in platform.machine():
