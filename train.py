@@ -704,7 +704,7 @@ def parse_opt(known=False):
     parser.add_argument(
         "--imgsz",
         type=int,
-        default=128,
+        default=320,
         help="train, val image size (pixels)",
     )
     parser.add_argument(

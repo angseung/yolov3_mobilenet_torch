@@ -32,6 +32,7 @@ from utils.augmentations import (
     letterbox,
     mixup,
     random_perspective,
+    embossing_object
 )
 from utils.general import (
     LOGGER,
@@ -810,6 +811,7 @@ class LoadImagesAndLabels(Dataset):
             labels_out[:, 1:] = torch.from_numpy(labels)
 
         # Convert
+        img = embossing_object(img, (7,7)) # HWC to HWC, BGR to BGR
         img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
         img = np.ascontiguousarray(img)
 

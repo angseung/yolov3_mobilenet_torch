@@ -2,7 +2,7 @@
 """
 Image augmentation functions
 """
-
+from typing import *
 import math
 import random
 
@@ -152,6 +152,18 @@ def letterbox(
         im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color
     )  # add border
     return im, ratio, (dw, dh)
+
+
+def embossing_object(img: np.ndarray, kernel_size: Tuple[int, int]) -> np.ndarray:
+    img = cv2.GaussianBlur(img, kernel_size, 1)
+    
+    gx_k = np.array([[-1,0,1], [-1,0,1],[-1,0,1]])
+    gy_k = np.array([[-1,-1,-1],[0,0,0], [1,1,1]])
+
+    edge_gx = cv2.filter2D(img, -1, gx_k)
+    edge_gy = cv2.filter2D(img, -1, gy_k)
+    
+    return cv2.add(edge_gx, cv2.add(edge_gy, edge_gy))
 
 
 def random_perspective(
