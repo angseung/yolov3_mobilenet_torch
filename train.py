@@ -78,7 +78,7 @@ from utils.torch_utils import (
     normalizer,
     to_grayscale,
 )
-from utils.quantization_utils import fuse_conv_bn_relu
+from utils.quantization_utils import fuse_yolo
 
 
 LOCAL_RANK = int(
@@ -218,7 +218,7 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     # Quantization Aware Training
     if qat:
         # fuse layers
-        fuse_conv_bn_relu(model.eval())
+        fuse_yolo(model.eval())
 
         # prepare for qat
         if "AMD64" in platform.machine() or "x86_64" in platform.machine():
