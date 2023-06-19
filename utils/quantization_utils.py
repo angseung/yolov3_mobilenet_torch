@@ -6,12 +6,13 @@ from pathlib import Path
 import cv2
 import torch
 from torch import nn as nn
-from torch.ao.quantization import fuse_modules
+from torchvision.models.quantization.utils import _fuse_modules
 from torch.utils.data import Dataset, DataLoader
+from torch.nn.functional import mse_loss
 from torchvision import transforms
 from torchvision.models.resnet import BasicBlock, Bottleneck, _resnet
 from torch.ao.quantization import quantize_dynamic
-from models.common import ConvBnReLU, Concat, DetectMultiBackend, DWSConvReLU
+from models.common import ConvBnReLU, Concat, DetectMultiBackend
 from utils.general import non_max_suppression
 from utils.torch_utils import normalizer
 from utils.roi_utils import resize
@@ -189,11 +190,10 @@ class QuantModel(nn.Module):
         return x
 
 
-class YoloBackboneQuantizer(nn.Module):
+class QuantizableYoloBackbone(nn.Module):
     def __init__(self, model: Union[str, nn.Module] = None, yolo_version: int = 3):
         super().__init__()
         self.yolo_version = yolo_version
-        self.is_fused = False
 
         if isinstance(model, str):
             if model.endswith(".pt"):
@@ -204,8 +204,8 @@ class YoloBackboneQuantizer(nn.Module):
                     self.model = self.model["model"].float()
             elif model.endswith(".yaml"):
                 self.model = DetectMultiBackend(
-                    os.path.join(ROOT, model), torch.device("cpu"), False
-                )
+                    os.path.join(model), torch.device("cpu"), False
+                ).model
         elif isinstance(model, nn.Module):
             self.model = model
 
@@ -215,14 +215,14 @@ class YoloBackboneQuantizer(nn.Module):
         else:
             raise AttributeError("Unsupported model type")
 
-        self.model.eval()
         self.quant = torch.ao.quantization.QuantStub()
+
         self.model.model[-1] = nn.Identity()
+
         self.dequant = torch.ao.quantization.DeQuantStub()
 
-    def fuse_model(self):
-        fuse_conv_bn_relu(self.model)
-        self.is_fused = True
+    def fuse_model(self, is_qat: bool = False):
+        fuse_yolo(self.model, is_qat=is_qat)
 
     def _forward_impl_v3(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.quant(x)
@@ -359,8 +359,9 @@ class YoloBackboneQuantizer(nn.Module):
 
         return [x17, x20, x23]
 
-    def forward(self, x: Union[torch.Tensor, List[torch.Tensor]]
-                ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
+    def forward(
+        self, x: Union[torch.Tensor, List[torch.Tensor]]
+    ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
         if self.yolo_version == 3:
             return self._forward_impl_v3(x)
 
@@ -384,7 +385,7 @@ class YoloHead(nn.Module):
             elif model.endswith(".yaml"):
                 yolo_model = DetectMultiBackend(
                     os.path.join(model), torch.device("cpu"), False
-                )
+                ).model
         elif isinstance(model, nn.Module):
             yolo_model = model
 
@@ -397,25 +398,57 @@ class YoloHead(nn.Module):
         self.model = copy.deepcopy(yolo_model.model[-1])
         self.model.eval()
 
-    def forward(self, x: List[torch.Tensor]
-                ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
+    def forward(
+        self, x: List[torch.Tensor]
+    ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
         return self.model(x) if self.model.training else self.model(x)[0]
 
 
-def fuse_conv_bn_relu(blocks: nn.Module):
+def fuse_yolo(blocks: nn.Module, is_qat: bool = False):
     """
     A function for fusing conv-bn-relu layers
     Parameters
     ----------
     blocks: A nn.Module type model to be fused
+    is_qat
     -------
 
     """
     for _, block in blocks.named_children():
         if isinstance(block, ConvBnReLU):
-            fuse_modules(block, [["conv", "bn", "act"]], inplace=True)
+            _fuse_modules(block, [["conv", "bn", "act"]], is_qat=is_qat, inplace=True)
         else:
-            fuse_conv_bn_relu(block)
+            fuse_yolo(block, is_qat=is_qat)
+
+
+def yolo_model(
+    model: Union[str, nn.Module],
+    yolo_version: int = 3,
+    quantize: bool = False,
+    is_qat: bool = False,
+) -> Tuple[QuantizableYoloBackbone, YoloHead]:
+    yolo_head = YoloHead(model)
+    yolo_backbone = QuantizableYoloBackbone(model, yolo_version=yolo_version)
+    yolo_backbone.eval()
+
+    backend = get_platform_aware_qconfig()
+    if backend == "qnnpack":
+        torch.backends.quantized.engine = "qnnpack"
+
+    if quantize:
+        if is_qat:
+            yolo_backbone.fuse_model(is_qat=True)
+            yolo_backbone.qconfig = torch.ao.quantization.get_default_qat_qconfig(
+                backend
+            )
+            yolo_backbone.train()
+            torch.ao.quantization.prepare_qat(yolo_backbone, inplace=True)
+        else:
+            yolo_backbone.fuse_model(is_qat=False)
+            yolo_backbone.qconfig = torch.ao.quantization.get_default_qconfig(backend)
+            torch.ao.quantization.prepare(yolo_backbone, inplace=True)
+
+    return yolo_backbone, yolo_head
 
 
 class CalibrationDataLoader(Dataset):
@@ -438,6 +471,34 @@ class CalibrationDataLoader(Dataset):
         return len(self.img_list)
 
 
+def get_platform_aware_qconfig() -> str:
+    arch = platform.machine()
+
+    if "AMD64" in arch or "x86_64" in arch:
+        arch = "x86"
+    elif "aarch64" in arch or "arm64" in arch:
+        arch = "qnnpack"
+
+    else:
+        raise RuntimeError(
+            f"Quantization Not Available on this platform, {arch}. It supports only AArch64 and x86-64 system."
+        )
+
+    return arch
+
+
+def cal_mse(
+    pred: torch.Tensor, target: torch.Tensor, norm: bool = False
+) -> torch.Tensor:
+    if norm:
+        mse = mse_loss(target, pred) / mse_loss(target, torch.zeros_like(target))
+
+    else:
+        mse = mse_loss(target, pred)
+
+    return mse.cpu().detach()
+
+
 if __name__ == "__main__":
     # create a model instance
     architecture = platform.uname().machine
@@ -445,19 +506,12 @@ if __name__ == "__main__":
     calibration_dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     input = torch.randn(1, 3, 320, 320)
-    fname = os.path.join("weights", "yolov3-nano-qat.pt")
-    yolo_detector = YoloHead(fname)
-    yolo_fp32 = YoloBackboneQuantizer(fname, yolo_version=3)
-    yolo_qint8 = YoloBackboneQuantizer(fname, yolo_version=3)
-    yolo_qint8.fuse_model()
-
-    if "AMD64" in platform.machine() or "x86_64" in platform.machine():
-        yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("x86")
-    elif "aarch64" in platform.machine() or "arm64" in platform.machine():
-        torch.backends.quantized.engine = "qnnpack"
-        yolo_qint8.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
-
-    torch.ao.quantization.prepare(yolo_qint8, inplace=True)
+    # fname = os.path.join("weights", "yolov5m-qat.pt")
+    fname = os.path.join("yolov3-qat.yaml")
+    yolo_qint8, yolo_detector = yolo_model(
+        fname, yolo_version=3, quantize=True, is_qat=False
+    )
+    yolo_fp32 = QuantizableYoloBackbone(fname, yolo_version=3)
 
     for i, img in enumerate(calibration_dataloader):
         print(f"\rcalibrating... {i + 1} / {dataset.__len__()}", end="")
@@ -468,6 +522,7 @@ if __name__ == "__main__":
     pred = yolo_detector(dummy_output)
 
     pred_fp32 = yolo_detector(yolo_fp32(input))
+    nmse = cal_mse(pred, pred_fp32, norm=True)
 
     pred_qint = non_max_suppression(
         pred,

@@ -78,7 +78,7 @@ from utils.torch_utils import (
     normalizer,
     to_grayscale,
 )
-from utils.quantization_utils import fuse_conv_bn_relu
+from utils.quantization_utils import fuse_yolo
 
 
 LOCAL_RANK = int(
@@ -218,17 +218,19 @@ def train(hyp, opt, device, callbacks):  # path/to/hyp.yaml or hyp dictionary
     # Quantization Aware Training
     if qat:
         # fuse layers
-        fuse_conv_bn_relu(model.eval())
+        fuse_yolo(model.eval())
 
         # prepare for qat
         if "AMD64" in platform.machine() or "x86_64" in platform.machine():
-            model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
-            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('x86')
+            model.qconfig = torch.ao.quantization.get_default_qat_qconfig("x86")
+            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig("x86")
 
         elif "aarch64" in platform.machine() or "arm64" in platform.machine():
             torch.backends.quantized.engine = "qnnpack"
-            model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
-            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig('qnnpack')
+            model.qconfig = torch.ao.quantization.get_default_qat_qconfig("qnnpack")
+            model.model.qconfig = torch.ao.quantization.get_default_qat_qconfig(
+                "qnnpack"
+            )
 
         model.train()
         torch.ao.quantization.prepare_qat(model.model, inplace=True)

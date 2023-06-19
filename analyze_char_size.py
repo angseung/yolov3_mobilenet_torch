@@ -36,7 +36,9 @@ counts_height, bins_height = np.histogram(result[1, :], bins=20)
 
 fig = plt.figure()
 plt.subplot(211)
-plt.stairs(counts_width, bins_width, label=f"mean {width_mean: .2f} std: {width_std: .2f}")
+plt.stairs(
+    counts_width, bins_width, label=f"mean {width_mean: .2f} std: {width_std: .2f}"
+)
 plt.title("width distribution")
 plt.grid(True)
 plt.xlabel("pixel")
@@ -44,7 +46,9 @@ plt.ylabel("counts")
 plt.legend()
 
 plt.subplot(212)
-plt.stairs(counts_height, bins_height, label=f"mean {height_mean: .2f} std: {height_std: .2f}")
+plt.stairs(
+    counts_height, bins_height, label=f"mean {height_mean: .2f} std: {height_std: .2f}"
+)
 plt.title("height distribution")
 plt.grid(True)
 plt.xlabel("pixel")
