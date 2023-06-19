@@ -14,7 +14,6 @@ Usage:
 
 import argparse
 import os
-import platform
 import sys
 from pathlib import Path
 
@@ -61,8 +60,6 @@ from utils.detect_utils import read_bboxes, correction_plate
 from utils.roi_utils import crop_region_of_plates, resize, rescale_roi
 from utils.augmentations import wrap_letterbox
 from utils.quantization_utils import (
-    QuantizableYoloBackbone,
-    YoloHead,
     CalibrationDataLoader,
     yolo_model,
 )
