@@ -64,6 +64,7 @@ from utils.quantization_utils import (
     QuantizableYoloBackbone,
     YoloHead,
     CalibrationDataLoader,
+    yolo_model,
 )
 
 
@@ -195,31 +196,10 @@ def run(
         print(f"Detected Yolo Version is {yolo_version}.")
 
         if isinstance(model, DetectMultiBackend):
-            head = YoloHead(model.model)  # nn.Sequential
-            model = QuantizableYoloBackbone(
-                model.model, yolo_version=yolo_version
-            )  # nn.Sequential
+            model, head = yolo_model(model.model, quantize=True, is_qat=False, yolo_version=yolo_version)
 
         elif isinstance(model, torch.nn.Module):
-            head = YoloHead(model)  # nn.Sequential
-            model = QuantizableYoloBackbone(
-                model, yolo_version=yolo_version
-            )  # nn.Sequential
-
-        model.fuse_model()
-
-        if (
-            "AMD64" in platform.machine() or "x86_64" in platform.machine()
-        ):  # intel x86-64, Windows & Linux
-            model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
-
-        elif (
-            "aarch64" in platform.machine() or "arm64" in platform.machine()
-        ):  # aarch64
-            torch.backends.quantized.engine = "qnnpack"
-            model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
-
-        torch.ao.quantization.prepare(model, inplace=True)
+            model, head = yolo_model(model, quantize=True, is_qat=False, yolo_version=yolo_version)
 
         if not nocal:
             # dataloader for calibration
