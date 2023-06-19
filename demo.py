@@ -78,7 +78,6 @@ def run(
     roi_crop=True,
     use_yolo=True,
 ):
-
     picam2 = init_cam(pin_num=18, color_format="RGB888")
     assert not (
         normalize and gray
@@ -319,7 +318,11 @@ def run(
         cv2.waitKey(1)
 
 
-def init_cam(pin_num: int = 18, resolution: Union[Tuple[int, int], int] = (640, 360), color_format: str = "RGB888"):
+def init_cam(
+    pin_num: int = 18,
+    resolution: Union[Tuple[int, int], int] = (640, 360),
+    color_format: str = "RGB888",
+):
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(pin_num, GPIO.IN, GPIO.PUD_UP)
 

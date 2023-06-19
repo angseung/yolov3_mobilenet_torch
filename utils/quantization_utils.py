@@ -359,8 +359,9 @@ class QuantizableYoloBackbone(nn.Module):
 
         return [x17, x20, x23]
 
-    def forward(self, x: Union[torch.Tensor, List[torch.Tensor]]
-                ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
+    def forward(
+        self, x: Union[torch.Tensor, List[torch.Tensor]]
+    ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
         if self.yolo_version == 3:
             return self._forward_impl_v3(x)
 
@@ -397,8 +398,9 @@ class YoloHead(nn.Module):
         self.model = copy.deepcopy(yolo_model.model[-1])
         self.model.eval()
 
-    def forward(self, x: List[torch.Tensor]
-                ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
+    def forward(
+        self, x: List[torch.Tensor]
+    ) -> Union[Tuple[List[torch.Tensor], torch.Tensor], List[torch.Tensor]]:
         return self.model(x) if self.model.training else self.model(x)[0]
 
 
@@ -427,6 +429,7 @@ def yolo_model(
 ) -> Tuple[QuantizableYoloBackbone, YoloHead]:
     yolo_head = YoloHead(model)
     yolo_backbone = QuantizableYoloBackbone(model, yolo_version=yolo_version)
+    yolo_backbone.eval()
 
     backend = get_platform_aware_qconfig()
     if backend == "qnnpack":
@@ -434,14 +437,16 @@ def yolo_model(
 
     if quantize:
         if is_qat:
-            model.fuse_model(is_qat=True)
-            model.qconfig = torch.ao.quantization.get_default_qat_qconfig(backend)
-            model.train()
-            torch.ao.quantization.prepare_qat(model, inplace=True)
+            yolo_backbone.fuse_model(is_qat=True)
+            yolo_backbone.qconfig = torch.ao.quantization.get_default_qat_qconfig(
+                backend
+            )
+            yolo_backbone.train()
+            torch.ao.quantization.prepare_qat(yolo_backbone, inplace=True)
         else:
-            model.fuse_model(is_qat=False)
-            model.qconfig = torch.ao.quantization.get_default_qconfig(backend)
-            torch.ao.quantization.prepare(model, inplace=True)
+            yolo_backbone.fuse_model(is_qat=False)
+            yolo_backbone.qconfig = torch.ao.quantization.get_default_qconfig(backend)
+            torch.ao.quantization.prepare(yolo_backbone, inplace=True)
 
     return yolo_backbone, yolo_head
 
@@ -503,7 +508,9 @@ if __name__ == "__main__":
     input = torch.randn(1, 3, 320, 320)
     # fname = os.path.join("weights", "yolov5m-qat.pt")
     fname = os.path.join("yolov3-qat.yaml")
-    yolo_qint8, yolo_detector = yolo_model(fname, yolo_version=3)
+    yolo_qint8, yolo_detector = yolo_model(
+        fname, yolo_version=3, quantize=True, is_qat=False
+    )
     yolo_fp32 = QuantizableYoloBackbone(fname, yolo_version=3)
 
     for i, img in enumerate(calibration_dataloader):
