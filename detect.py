@@ -193,10 +193,14 @@ def run(
         print(f"Detected Yolo Version is {yolo_version}.")
 
         if isinstance(model, DetectMultiBackend):
-            model, head = yolo_model(model.model, quantize=True, is_qat=False, yolo_version=yolo_version)
+            model, head = yolo_model(
+                model.model, quantize=True, is_qat=False, yolo_version=yolo_version
+            )
 
         elif isinstance(model, torch.nn.Module):
-            model, head = yolo_model(model, quantize=True, is_qat=False, yolo_version=yolo_version)
+            model, head = yolo_model(
+                model, quantize=True, is_qat=False, yolo_version=yolo_version
+            )
 
         if not nocal:
             # dataloader for calibration
